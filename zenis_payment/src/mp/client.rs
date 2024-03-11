@@ -1,12 +1,41 @@
-use std::sync::Arc;
+use std::sync::{
+    atomic::{AtomicU64, Ordering},
+    Arc,
+};
 
+use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 use zenis_discord::twilight_model::id::{marker::UserMarker, Id};
 
 use super::{common::Item, preference::*};
 
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Default,
+)]
+pub struct TransactionId(u64);
+
+impl TransactionId {
+    pub fn new() -> Self {
+        static TRANSACTION_ID: AtomicU64 = AtomicU64::new(0);
+        let id = TRANSACTION_ID.fetch_add(1, Ordering::Relaxed);
+
+        Self(id)
+    }
+
+    pub fn get(&self) -> u64 {
+        self.0
+    }
+}
+
+impl From<u64> for TransactionId {
+    fn from(value: u64) -> Self {
+        Self(value)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Transaction {
+    pub id: TransactionId,
     pub discord_user_id: Id<UserMarker>,
     pub item: String,
 }
@@ -31,8 +60,12 @@ impl MercadoPagoClient {
         })
     }
 
-    pub fn notification_url(&self) -> String {
-        std::env::var("MERCADO_PAGO_NOTIFICATION_URL").unwrap()
+    pub fn notification_url(&self, id: TransactionId) -> String {
+        format!(
+            "{}/{}",
+            std::env::var("MERCADO_PAGO_NOTIFICATION_URL").unwrap(),
+            id.get()
+        )
     }
 
     pub async fn create_preference(
@@ -40,11 +73,18 @@ impl MercadoPagoClient {
         user_id: Id<UserMarker>,
         items: Vec<Item>,
     ) -> anyhow::Result<CheckoutProPreferencesResponse> {
+        let transaction = Transaction {
+            id: TransactionId::new(),
+            discord_user_id: user_id,
+            item: items
+                .first()
+                .map(|i| i.id.clone().unwrap_or_default())
+                .unwrap_or_default(),
+        };
+
         let request = CheckoutProPreference::builder()
-            .with_notification_url(self.notification_url())
+            .with_notification_url(self.notification_url(transaction.id))
             .with_items(items.clone())
-            .with_external_reference("ref_testing_zenis")
-            .with_cpf(15322988383)
             .build();
 
         let response = self
@@ -57,13 +97,7 @@ impl MercadoPagoClient {
             .json::<CheckoutProPreferencesResponse>()
             .await?;
 
-        self.transactions.write().await.push(Transaction {
-            discord_user_id: user_id,
-            item: items
-                .first()
-                .map(|i| i.id.clone().unwrap_or_default())
-                .unwrap_or_default(),
-        });
+        self.transactions.write().await.push(transaction);
 
         Ok(response)
     }
@@ -85,5 +119,10 @@ impl MercadoPagoClient {
             .await?;
 
         Ok(response)
+    }
+
+    pub async fn get_transaction(&self, id: TransactionId) -> Option<Transaction> {
+        let transactons = self.transactions.read().await;
+        transactons.iter().find(|t| t.id == id).cloned()
     }
 }

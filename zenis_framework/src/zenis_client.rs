@@ -25,7 +25,7 @@ use zenis_discord::{
     },
     DiscordHttpClient, EmbedBuilder,
 };
-use zenis_payment::mp::client::MercadoPagoClient;
+use zenis_payment::mp::client::{MercadoPagoClient, Transaction, TransactionId};
 
 async fn load_png_from_url(url: &str) -> anyhow::Result<String> {
     let client = reqwest::Client::new();
@@ -86,6 +86,10 @@ impl ZenisClient {
 
     pub async fn get_agents(&self, id: Id<ChannelMarker>) -> Option<Vec<ZenisAgent>> {
         self.agents.read().await.get(&id).cloned()
+    }
+
+    pub async fn get_transaction(&self, id: TransactionId) -> Option<Transaction> {
+        self.mp_client.get_transaction(id).await
     }
 
     pub async fn create_agent(

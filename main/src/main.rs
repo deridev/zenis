@@ -21,7 +21,10 @@ use zenis_discord::{
 
 use tokio_stream::StreamExt;
 use zenis_framework::{watcher::Watcher, ZenisAgent, ZenisClient};
-use zenis_payment::mp::{client::MercadoPagoClient, notification::NotificationPayload};
+use zenis_payment::mp::{
+    client::{MercadoPagoClient, TransactionId},
+    notification::NotificationPayload,
+};
 
 use warp::http::Response as WarpResponse;
 
@@ -79,16 +82,23 @@ async fn main() {
                 .map(|| warp::reply::html("This is the API for Zenis AI. Get out of here."));
 
             let notification_route = warp::path("notifications")
+                .and(warp::path::param::<u64>())
                 .and(warp::post())
                 .and(warp::body::json())
-                .map(move |payload: serde_json::Value| (payload, client.clone(), db.clone()))
+                .map(move |transaction_id, payload: serde_json::Value| {
+                    (transaction_id, payload, client.clone(), db.clone())
+                })
                 .and_then(
-                    |(payload, client, database): (
+                    |(transaction_id, payload, client, database): (
+                        u64,
                         serde_json::Value,
                         Arc<ZenisClient>,
                         Arc<ZenisDatabase>,
                     )| async move {
-                        println!("Received notification:\n{:?}", payload);
+                        println!(
+                            "Received notification with TRANSACTION ID {transaction_id}:\n{:?}",
+                            payload
+                        );
 
                         if payload.get("action").is_some() {
                             let notification_payload = match serde_json::from_value::<
@@ -109,6 +119,7 @@ async fn main() {
                             };
 
                             process_mp_notification(
+                                transaction_id.into(),
                                 notification_payload,
                                 client.clone(),
                                 database.clone(),
@@ -266,10 +277,18 @@ async fn process_agent_credits_payment(
 }
 
 pub async fn process_mp_notification(
+    transaction_id: TransactionId,
     payload: NotificationPayload,
     client: Arc<ZenisClient>,
     database: Arc<ZenisDatabase>,
 ) -> Result<(), String> {
-    println!("Processing notification: {:?}", payload);
+    let Some(transaction) = client.get_transaction(transaction_id).await else {
+        println!("Transaction with ID {transaction_id:?} NOT FOUND.");
+        return Ok(());
+    };
+
+    println!("Processing notification {transaction_id:?}: {:?}", payload);
+    println!("> Transaction {transaction_id:?}: {:?}", transaction);
+
     Ok(())
 }
