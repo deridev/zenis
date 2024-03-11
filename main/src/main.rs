@@ -10,6 +10,7 @@ use rand::{rngs::StdRng, Rng, SeedableRng};
 use warp::{reply::Response, Filter};
 use zenis_ai::PaymentMethod;
 use zenis_common::config;
+use zenis_data::products::PRODUCTS;
 use zenis_database::{DatabaseState, ZenisDatabase};
 use zenis_discord::{
     twilight_gateway::{
@@ -287,8 +288,18 @@ pub async fn process_mp_notification(
         return Ok(());
     };
 
+    let Some(product) = PRODUCTS
+        .iter()
+        .find(|product| product.id == transaction.item)
+    else {
+        println!("Product with ID {:?} NOT FOUND.", transaction.item);
+        return Ok(());
+    };
+
     println!("Processing notification {transaction_id:?}: {:?}", payload);
     println!("> Transaction {transaction_id:?}: {:?}", transaction);
+
+    println!("$$$$$$$$$$$$$$$$$$$$ Product bought: {:?}", product);
 
     Ok(())
 }
