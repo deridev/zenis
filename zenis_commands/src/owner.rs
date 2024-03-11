@@ -209,13 +209,16 @@ pub async fn owner(
             let preference = ctx
                 .client
                 .mp_client
-                .create_preference(vec![Item::simple(
-                    10.0,
-                    "1000 Créditos",
-                    "Créditos são usados para interagir com agentes IA",
-                    1,
+                .create_preference(
+                    author.id,
+                    vec![Item::simple(
+                        10.0,
+                        "1000 Créditos",
+                        "Créditos são usados para interagir com agentes IA",
+                        1,
+                    )
+                    .with_id("1k_credits")],
                 )
-                .with_id("1k_credits")])
                 .await?;
 
             ctx.reply(format!("```json\n{:?}\n```", preference)).await?;

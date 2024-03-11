@@ -43,7 +43,8 @@ impl Item {
 }
 
 /// Documents for personal identification, such as RG, CPF, CNH
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+
 pub struct PersonalIdentification {
     #[serde(rename = "type")]
     pub document_type: Option<DocumentType>,
@@ -64,7 +65,7 @@ impl PersonalIdentification {
     }
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct Phone {
     #[serde(
         default,
@@ -74,7 +75,8 @@ pub struct Phone {
     pub number: Option<String>,
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+
 pub struct Address {
     pub zip_code: Option<String>,
     pub state_name: Option<String>,
@@ -84,7 +86,7 @@ pub struct Address {
 }
 
 /// A payer will ALWAYS have a `PersonalIdentification`, and an `email` since it's the bare minimum.
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct CheckoutProPayer {
     pub(crate) email: Option<String>,
     pub identification: PersonalIdentification,

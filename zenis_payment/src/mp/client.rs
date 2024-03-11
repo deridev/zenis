@@ -1,8 +1,15 @@
 use std::sync::Arc;
 
 use tokio::sync::RwLock;
+use zenis_discord::twilight_model::id::{marker::UserMarker, Id};
 
 use super::{common::Item, preference::*};
+
+#[derive(Debug, Clone)]
+pub struct Transaction {
+    pub discord_user_id: Id<UserMarker>,
+    pub item: String,
+}
 
 #[derive(Debug, Clone)]
 pub struct MercadoPagoClient {
@@ -10,7 +17,7 @@ pub struct MercadoPagoClient {
     access_token: String,
     client: reqwest::Client,
 
-    active_preferences: Arc<RwLock<Vec<CheckoutProPreferencesResponse>>>,
+    transactions: Arc<RwLock<Vec<Transaction>>>,
 }
 
 impl MercadoPagoClient {
@@ -20,7 +27,7 @@ impl MercadoPagoClient {
             debug,
             client: reqwest::Client::new(),
 
-            active_preferences: Arc::new(RwLock::new(vec![])),
+            transactions: Arc::new(RwLock::new(vec![])),
         })
     }
 
@@ -30,12 +37,14 @@ impl MercadoPagoClient {
 
     pub async fn create_preference(
         &self,
+        user_id: Id<UserMarker>,
         items: Vec<Item>,
     ) -> anyhow::Result<CheckoutProPreferencesResponse> {
         let request = CheckoutProPreference::builder()
             .with_notification_url(self.notification_url())
-            .with_items(items)
+            .with_items(items.clone())
             .with_external_reference("ref_testing_zenis")
+            .with_cpf(15322988383)
             .build();
 
         let response = self
@@ -48,7 +57,13 @@ impl MercadoPagoClient {
             .json::<CheckoutProPreferencesResponse>()
             .await?;
 
-        self.active_preferences.write().await.push(response.clone());
+        self.transactions.write().await.push(Transaction {
+            discord_user_id: user_id,
+            item: items
+                .first()
+                .map(|i| i.id.clone().unwrap_or_default())
+                .unwrap_or_default(),
+        });
 
         Ok(response)
     }

@@ -1,10 +1,11 @@
 use serde::{Deserialize, Serialize};
 use serde_aux::prelude::*;
 
-use super::common::{CheckoutProPayer, Item};
+use super::common::{CheckoutProPayer, Item, PersonalIdentification};
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize, Default)]
 pub struct CheckoutProPreference {
+    pub payer: Option<CheckoutProPayer>,
     pub items: Vec<Item>,
     pub expires: bool,
     pub notification_url: String,
@@ -42,6 +43,17 @@ impl PreferenceBuilder {
 
     pub fn expires(mut self, expires: bool) -> Self {
         self.preference.expires = expires;
+        self
+    }
+
+    pub fn with_cpf(mut self, cpf: i64) -> Self {
+        self.preference.payer = Some(CheckoutProPayer {
+            identification: PersonalIdentification {
+                document_type: Some("CPF".to_string()),
+                number: Some(cpf),
+            },
+            ..Default::default()
+        });
         self
     }
 
