@@ -212,12 +212,12 @@ pub async fn owner(
                 .create_preference(
                     author.id,
                     vec![Item::simple(
-                        10.0,
+                        15.0,
                         "1000 Créditos",
                         "Créditos são usados para interagir com agentes IA",
                         1,
                     )
-                    .with_id("1k_credits")],
+                    .with_id("1000_credits")],
                 )
                 .await?;
 
