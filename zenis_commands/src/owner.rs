@@ -214,7 +214,8 @@ pub async fn owner(
                     "1000 Créditos",
                     "Créditos são usados para interagir com agentes IA",
                     1,
-                )])
+                )
+                .with_id("1k_credits")])
                 .await?;
 
             ctx.reply(format!("```json\n{:?}\n```", preference)).await?;

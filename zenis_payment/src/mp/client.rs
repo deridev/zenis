@@ -35,6 +35,7 @@ impl MercadoPagoClient {
         let request = CheckoutProPreference::builder()
             .with_notification_url(self.notification_url())
             .with_items(items)
+            .with_external_reference("ref_testing_zenis")
             .build();
 
         let response = self

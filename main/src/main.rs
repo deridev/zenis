@@ -91,7 +91,11 @@ async fn main() {
                         println!("Received notification:\n{:?}", payload);
 
                         if payload.get("action").is_some() {
-                            let notification_payload = match serde_json::from_value::<NotificationPayload>(payload.clone()) {
+                            let notification_payload = match serde_json::from_value::<
+                                NotificationPayload,
+                            >(
+                                payload.clone()
+                            ) {
                                 Ok(notification_payload) => notification_payload,
                                 Err(e) => {
                                     eprintln!("Failed to parse notification payload: {:?}", e);

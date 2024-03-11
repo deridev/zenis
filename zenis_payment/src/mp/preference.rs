@@ -8,6 +8,7 @@ pub struct CheckoutProPreference {
     pub items: Vec<Item>,
     pub expires: bool,
     pub notification_url: String,
+    pub external_reference: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
@@ -31,6 +32,11 @@ impl PreferenceBuilder {
 
     pub fn with_items(mut self, items: Vec<Item>) -> Self {
         self.preference.items = items;
+        self
+    }
+
+    pub fn with_external_reference(mut self, external_reference: impl ToString) -> Self {
+        self.preference.external_reference = Some(external_reference.to_string());
         self
     }
 
