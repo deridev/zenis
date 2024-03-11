@@ -1,4 +1,4 @@
-use zenis_payment::mp::common::Item;
+use zenis_payment::mp::{client::CreditDestination, common::Item};
 
 use crate::prelude::*;
 
@@ -211,6 +211,7 @@ pub async fn owner(
                 .mp_client
                 .create_preference(
                     author.id,
+                    CreditDestination::User(author.id),
                     vec![Item::simple(
                         15.0,
                         "1000 Créditos",

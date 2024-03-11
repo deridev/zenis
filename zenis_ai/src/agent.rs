@@ -14,7 +14,7 @@ use zenis_discord::{
 use crate::brain::*;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub enum PaymentMethod {
+pub enum CreditsPaymentMethod {
     UserCredits(Id<UserMarker>),
     GuildPublicCredits(Id<GuildMarker>),
 }
@@ -29,7 +29,7 @@ pub struct Agent<AgentBrain: Brain> {
     pub agent_name: String,
     pub agent_description: String,
     pub agent_pricing: AgentPricing,
-    pub agent_payment_method: PaymentMethod,
+    pub agent_payment_method: CreditsPaymentMethod,
 
     pub exit_reason: Option<String>,
 
@@ -53,7 +53,7 @@ where
         webhook: (String, Id<WebhookMarker>),
         agent_data: AgentModel,
         pricing: AgentPricing,
-        payment_method: PaymentMethod,
+        payment_method: CreditsPaymentMethod,
         brain: AgentBrain,
     ) -> Self {
         let (webhook_token, webhook_id) = webhook;

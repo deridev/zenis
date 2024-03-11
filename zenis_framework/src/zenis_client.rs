@@ -8,7 +8,7 @@ use std::{
     },
 };
 use tokio::sync::RwLock;
-use zenis_ai::{claude_brain::ClaudeBrain, Agent, PaymentMethod};
+use zenis_ai::{claude_brain::ClaudeBrain, Agent, CreditsPaymentMethod};
 use zenis_common::Color;
 use zenis_database::{
     agent_model::{AgentModel, AgentPricing},
@@ -92,12 +92,16 @@ impl ZenisClient {
         self.mp_client.get_transaction(id).await
     }
 
+    pub async fn delete_transaction(&self, id: TransactionId) -> anyhow::Result<()> {
+        self.mp_client.delete_transaction(id).await
+    }
+
     pub async fn create_agent(
         &self,
         channel_id: Id<ChannelMarker>,
         agent: AgentModel,
         pricing: AgentPricing,
-        payment_method: PaymentMethod,
+        payment_method: CreditsPaymentMethod,
     ) -> anyhow::Result<()> {
         let image = match &agent.agent_url_image {
             Some(url) => load_png_from_url(url).await.ok(),

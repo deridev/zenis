@@ -5,7 +5,10 @@ use std::sync::{
 
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
-use zenis_discord::twilight_model::id::{marker::UserMarker, Id};
+use zenis_discord::twilight_model::id::{
+    marker::{GuildMarker, UserMarker},
+    Id,
+};
 
 use super::{common::Item, preference::*};
 
@@ -33,11 +36,19 @@ impl From<u64> for TransactionId {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum CreditDestination {
+    User(Id<UserMarker>),
+    PublicGuild(Id<GuildMarker>),
+    PrivateGuild(Id<GuildMarker>),
+}
+
 #[derive(Debug, Clone)]
 pub struct Transaction {
     pub id: TransactionId,
     pub discord_user_id: Id<UserMarker>,
     pub item: String,
+    pub credit_destination: CreditDestination,
 }
 
 #[derive(Debug, Clone)]
@@ -71,10 +82,12 @@ impl MercadoPagoClient {
     pub async fn create_preference(
         &self,
         user_id: Id<UserMarker>,
+        destination: CreditDestination,
         items: Vec<Item>,
     ) -> anyhow::Result<CheckoutProPreferencesResponse> {
         let transaction = Transaction {
             id: TransactionId::new(),
+            credit_destination: destination,
             discord_user_id: user_id,
             item: items
                 .first()
@@ -122,7 +135,14 @@ impl MercadoPagoClient {
     }
 
     pub async fn get_transaction(&self, id: TransactionId) -> Option<Transaction> {
-        let transactons = self.transactions.read().await;
-        transactons.iter().find(|t| t.id == id).cloned()
+        let transactions = self.transactions.read().await;
+        transactions.iter().find(|t| t.id == id).cloned()
+    }
+
+    pub async fn delete_transaction(&self, id: TransactionId) -> anyhow::Result<()> {
+        let mut transactions = self.transactions.write().await;
+        transactions.retain(|t| t.id != id);
+
+        Ok(())
     }
 }

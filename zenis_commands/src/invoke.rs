@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use once_cell::sync::Lazy;
-use zenis_ai::PaymentMethod;
+use zenis_ai::CreditsPaymentMethod;
 use zenis_database::agent_model::{AgentModel, AgentPricing};
 use zenis_discord::twilight_model::channel::message::component::ButtonStyle;
 use zenis_framework::{util::make_multiple_rows, watcher::WatcherOptions};
@@ -127,7 +127,7 @@ pub async fn invoke(mut ctx: CommandContext) -> anyhow::Result<()> {
         return Ok(());
     };
 
-    let mut payment_method = PaymentMethod::UserCredits(author_id);
+    let mut payment_method = CreditsPaymentMethod::UserCredits(author_id);
 
     if let Some(guild_id) = channel.guild_id {
         if let Some(method) = ask_for_payment_method(&mut ctx, agent, author_id, guild_id).await? {
@@ -159,7 +159,7 @@ async fn ask_for_payment_method(
     agent: &AgentModel,
     author_id: Id<UserMarker>,
     guild_id: Id<GuildMarker>,
-) -> anyhow::Result<Option<PaymentMethod>> {
+) -> anyhow::Result<Option<CreditsPaymentMethod>> {
     let guild_data = ctx.db().guilds().get_by_guild(guild_id).await?;
     let user_data = ctx.db().users().get_by_user(author_id).await?;
 
@@ -231,9 +231,9 @@ async fn ask_for_payment_method(
         .await?;
 
     if data.custom_id == "user" {
-        return Ok(Some(PaymentMethod::UserCredits(author_id)));
+        return Ok(Some(CreditsPaymentMethod::UserCredits(author_id)));
     } else if data.custom_id == "guild" {
-        return Ok(Some(PaymentMethod::GuildPublicCredits(guild_id)));
+        return Ok(Some(CreditsPaymentMethod::GuildPublicCredits(guild_id)));
     }
 
     Ok(None)

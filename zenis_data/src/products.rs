@@ -4,7 +4,7 @@ pub struct Product {
     pub name: &'static str,
     pub description: &'static str,
     pub price: f64,
-    pub amount_of_credits: u64,
+    pub amount_of_credits: i64,
 }
 
 const DEFAULT_DESCRIPTION: &str = "Créditos são usados para usar Zenis AI";

@@ -8,8 +8,8 @@ pub use event_handler::EventHandler;
 
 use rand::{rngs::StdRng, Rng, SeedableRng};
 use warp::{reply::Response, Filter};
-use zenis_ai::PaymentMethod;
-use zenis_common::config;
+use zenis_ai::CreditsPaymentMethod;
+use zenis_common::{config, Color};
 use zenis_data::products::PRODUCTS;
 use zenis_database::{DatabaseState, ZenisDatabase};
 use zenis_discord::{
@@ -17,13 +17,13 @@ use zenis_discord::{
         stream::{self, ShardEventStream},
         Config, Intents,
     },
-    DiscordHttpClient,
+    DiscordHttpClient, EmbedBuilder,
 };
 
 use tokio_stream::StreamExt;
 use zenis_framework::{watcher::Watcher, ZenisAgent, ZenisClient};
 use zenis_payment::mp::{
-    client::{MercadoPagoClient, TransactionId},
+    client::{CreditDestination, MercadoPagoClient, TransactionId},
     notification::NotificationPayload,
 };
 
@@ -249,7 +249,7 @@ async fn process_agent_credits_payment(
     let price_per_reply = agent.agent_pricing.price_per_reply;
 
     match payment_method {
-        PaymentMethod::UserCredits(user_id) => {
+        CreditsPaymentMethod::UserCredits(user_id) => {
             let mut user_data = database.users().get_by_user(user_id).await?;
             user_data.remove_credits(price_per_reply);
 
@@ -260,7 +260,7 @@ async fn process_agent_credits_payment(
 
             database.users().save(user_data).await?;
         }
-        PaymentMethod::GuildPublicCredits(guild_id) => {
+        CreditsPaymentMethod::GuildPublicCredits(guild_id) => {
             let mut guild_data = database.guilds().get_by_guild(guild_id).await?;
             guild_data.remove_public_credits(price_per_reply);
 
@@ -282,9 +282,30 @@ pub async fn process_mp_notification(
     payload: NotificationPayload,
     client: Arc<ZenisClient>,
     database: Arc<ZenisDatabase>,
-) -> Result<(), String> {
+) -> anyhow::Result<()> {
+    println!("{:?}", payload);
     let Some(transaction) = client.get_transaction(transaction_id).await else {
         println!("Transaction with ID {transaction_id:?} NOT FOUND.");
+        return Ok(());
+    };
+
+    let Ok(dm_channel) = client
+        .http
+        .create_private_channel(transaction.discord_user_id)
+        .await
+    else {
+        println!(
+            "Failed to create a private channel for user {:?}",
+            transaction.discord_user_id
+        );
+        return Ok(());
+    };
+
+    let Ok(dm_channel) = dm_channel.model().await else {
+        println!(
+            "Failed to get the private channel for user {:?}",
+            transaction.discord_user_id
+        );
         return Ok(());
     };
 
@@ -292,14 +313,50 @@ pub async fn process_mp_notification(
         .iter()
         .find(|product| product.id == transaction.item)
     else {
-        println!("Product with ID {:?} NOT FOUND.", transaction.item);
         return Ok(());
     };
 
-    println!("Processing notification {transaction_id:?}: {:?}", payload);
-    println!("> Transaction {transaction_id:?}: {:?}", transaction);
+    client.delete_transaction(transaction_id).await.ok();
 
-    println!("$$$$$$$$$$$$$$$$$$$$ Product bought: {:?}", product);
+    let mut embed = EmbedBuilder::new_common()
+        .set_color(Color::GREEN)
+        .set_description(format!("## ✅ Pagamento aprovado!\n\nVocê efetuou a compra do produto **{}** no valor de **R$ {:.2?}**.\nAproveite ZenisAI!", product.name, product.price));
+
+    match transaction.credit_destination {
+        CreditDestination::User(user_id) => {
+            let mut user_data = database.users().get_by_user(user_id).await?;
+            user_data.add_credits(product.amount_of_credits);
+            database.users().save(user_data).await?;
+
+            embed = embed.add_inlined_field("Destinatário", format!("Usuário: `{}`", user_id));
+        }
+        CreditDestination::PublicGuild(guild_id) => {
+            let mut guild_data = database.guilds().get_by_guild(guild_id).await?;
+            guild_data.add_public_credits(product.amount_of_credits);
+            database.guilds().save(guild_data).await?;
+
+            embed = embed.add_inlined_field(
+                "Destinatário",
+                format!("Créditos Públicos do Servidor: `{}`", guild_id),
+            );
+        }
+        CreditDestination::PrivateGuild(guild_id) => {
+            let mut guild_data = database.guilds().get_by_guild(guild_id).await?;
+            guild_data.add_credits(product.amount_of_credits);
+            database.guilds().save(guild_data).await?;
+
+            embed = embed.add_inlined_field(
+                "Destinatário",
+                format!("Créditos Privados do Servidor: `{}`", guild_id),
+            );
+        }
+    }
+
+    client
+        .http
+        .create_message(dm_channel.id)
+        .embeds(&[embed.build()])?
+        .await?;
 
     Ok(())
 }
