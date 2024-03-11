@@ -60,7 +60,10 @@ async fn main() {
             .map(|payload: serde_json::Value| {
                 println!("Notificação recebida:\n{:?}", payload);
 
-                WarpResponse::builder().status(200).body("OK".to_string()).expect("Building WarpResponse failed")
+                WarpResponse::builder()
+                    .status(200)
+                    .body("OK".to_string())
+                    .expect("Building WarpResponse failed")
             });
 
         let addr = SocketAddr::from(([0, 0, 0, 0], 80));
