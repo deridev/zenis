@@ -1,0 +1,18 @@
+[package]
+name = "zenis_macros"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+proc-macro = true
+
+[dev-dependencies]
+trybuild = { version = "1.0.83", features = ["diff"] }
+
+[dependencies]
+zenis_discord = { path = "../zenis_discord" }
+
+syn = { version = "1", features = ["full", "extra-traits"] }
+quote = { version = "1.0.33"  }
+proc-macro2 = "1.0.66"

@@ -1,0 +1,22 @@
+[package]
+name = "zenis_database"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+zenis_discord = { path = "../zenis_discord" }
+zenis_common = { path = "../zenis_common" }
+zenis_data = { path = "../zenis_data" }
+
+anyhow = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+once_cell = { workspace = true }
+chrono = { workspace = true }
+bson = { workspace = true }
+rand = { workspace = true }
+unidecode = { workspace = true }
+tokio-stream = { workspace = true }
+mongodb = "2.8"

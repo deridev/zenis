@@ -1,0 +1,19 @@
+[package]
+name = "zenis_discord"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+zenis_common = { path = "../zenis_common" }
+anyhow = { workspace = true }
+async-trait = { workspace = true }
+chrono = { workspace = true }
+twilight-gateway = "0.15.4"
+twilight-http = "0.15.4"
+twilight-model = "0.15.4"
+twilight-standby = "0.15.4"
+
+tokio-stream = "0.1.14"
+trait-set = "0.3.0"

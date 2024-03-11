@@ -1,0 +1,27 @@
+[package]
+name = "main"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+zenis_discord = { path = "../zenis_discord" }
+zenis_framework = { path = "../zenis_framework" }
+zenis_commands = { path = "../zenis_commands" }
+zenis_common = { path = "../zenis_common" }
+zenis_database = { path = "../zenis_database" }
+zenis_data = { path = "../zenis_data" }
+zenis_ai = { path = "../zenis_ai" }
+zenis_payment = { path = "../zenis_payment" }
+
+dotenv = "0.15.0"
+tokio = { version = "1.32.0", features = ["rt", "rt-multi-thread", "macros"] }
+tokio-stream = "0.1.14"
+
+anyhow = { workspace = true }
+once_cell = { workspace = true }
+rand = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+warp = "0.3"

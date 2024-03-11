@@ -1,0 +1,22 @@
+[package]
+name = "zenis_ai"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+zenis_common = { path = "../zenis_common" }
+zenis_data = { path = "../zenis_data" }
+zenis_database = { path = "../zenis_database" }
+zenis_discord = { path = "../zenis_discord" }
+
+anyhow = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+once_cell = { workspace = true }
+chrono = { workspace = true }
+async-trait = { workspace = true }
+reqwest = { workspace = true }
+
+regex = "1.10.3"
