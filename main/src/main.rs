@@ -91,16 +91,17 @@ async fn main() {
                         println!("Received notification:\n{:?}", payload);
 
                         if payload.get("action").is_some() {
-                            let Ok(notification_payload) =
-                                serde_json::from_value::<NotificationPayload>(payload.clone())
-                            else {
-                                eprintln!("Failed to parse notification payload: {:?}", payload);
-                                return Ok::<Response, warp::Rejection>(
-                                    WarpResponse::builder()
-                                        .status(500)
-                                        .body("Failed to parse notification payload".into())
-                                        .expect("Building WarpResponse failed"),
-                                );
+                            let notification_payload = match serde_json::from_value::<NotificationPayload>(payload.clone()) {
+                                Ok(notification_payload) => notification_payload,
+                                Err(e) => {
+                                    eprintln!("Failed to parse notification payload: {:?}", e);
+                                    return Ok::<Response, warp::Rejection>(
+                                        WarpResponse::builder()
+                                            .status(500)
+                                            .body("Failed to parse notification payload".into())
+                                            .expect("Building WarpResponse failed"),
+                                    );
+                                }
                             };
 
                             process_mp_notification(
