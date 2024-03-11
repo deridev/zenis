@@ -25,11 +25,7 @@ impl MercadoPagoClient {
     }
 
     pub fn notification_url(&self) -> String {
-        if self.debug {
-            std::env::var("DEBUG_MERCADO_PAGO_NOTIFICATION_URL").unwrap()
-        } else {
-            std::env::var("MERCADO_PAGO_NOTIFICATION_URL").unwrap()
-        }
+        std::env::var("MERCADO_PAGO_NOTIFICATION_URL").unwrap()
     }
 
     pub async fn create_preference(
