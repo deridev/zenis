@@ -7,7 +7,7 @@ use chrono::Utc;
 pub use event_handler::EventHandler;
 
 use rand::{rngs::StdRng, Rng, SeedableRng};
-use warp::Filter;
+use warp::{reply::Response, Filter};
 use zenis_ai::PaymentMethod;
 use zenis_common::config;
 use zenis_database::{DatabaseState, ZenisDatabase};
@@ -50,28 +50,6 @@ async fn main() {
     .await
     .unwrap();
 
-    tokio::spawn(async move {
-        let root_route = warp::path::end()
-            .map(|| warp::reply::html("This is the API for Zenis AI. Get out of here."));
-
-        let notification_route = warp::path("notifications")
-            .and(warp::post())
-            .and(warp::body::json())
-            .map(|payload: serde_json::Value| {
-                println!("Notificação recebida:\n{:?}", payload);
-
-                WarpResponse::builder()
-                    .status(200)
-                    .body("OK".to_string())
-                    .expect("Building WarpResponse failed")
-            });
-
-        let addr = SocketAddr::from(([0, 0, 0, 0], 80));
-
-        let routes = root_route.or(notification_route);
-        warp::serve(routes).run(addr).await;
-    });
-
     let database = Arc::new(
         ZenisDatabase::new(if config::DEBUG {
             DatabaseState::Debug
@@ -92,6 +70,65 @@ async fn main() {
 
     let mut stream = ShardEventStream::new(shards.iter_mut());
 
+    // Payment API thread
+    {
+        let client = client.clone();
+        let db = database.clone();
+        tokio::spawn(async move {
+            let root_route = warp::path::end()
+                .map(|| warp::reply::html("This is the API for Zenis AI. Get out of here."));
+
+            let notification_route = warp::path("notifications")
+                .and(warp::post())
+                .and(warp::body::json())
+                .map(move |payload: serde_json::Value| (payload, client.clone(), db.clone()))
+                .and_then(
+                    |(payload, client, database): (
+                        serde_json::Value,
+                        Arc<ZenisClient>,
+                        Arc<ZenisDatabase>,
+                    )| async move {
+                        println!("Received notification:\n{:?}", payload);
+
+                        if payload.get("action").is_some() {
+                            let Ok(notification_payload) =
+                                serde_json::from_value::<NotificationPayload>(payload.clone())
+                            else {
+                                eprintln!("Failed to parse notification payload: {:?}", payload);
+                                return Ok::<Response, warp::Rejection>(
+                                    WarpResponse::builder()
+                                        .status(500)
+                                        .body("Failed to parse notification payload".into())
+                                        .expect("Building WarpResponse failed"),
+                                );
+                            };
+
+                            process_mp_notification(
+                                notification_payload,
+                                client.clone(),
+                                database.clone(),
+                            )
+                            .await
+                            .ok();
+                        } else {
+                            println!("Received notification is not a payment notification");
+                        }
+
+                        Ok(WarpResponse::builder()
+                            .status(200)
+                            .body("OK".into())
+                            .expect("Building WarpResponse failed"))
+                    },
+                );
+
+            let addr = SocketAddr::from(([0, 0, 0, 0], 80));
+
+            let routes = root_route.or(notification_route);
+            warp::serve(routes).run(addr).await;
+        });
+    }
+
+    // Agent reply thread
     {
         let client = client.clone();
         let db = database.clone();
@@ -180,12 +217,15 @@ async fn process_agent(
         Utc::now().timestamp() + StdRng::from_entropy().gen_range(1..6);
 
     drop(agent);
-    process_payment(zenis_agent, database).await?;
+    process_agent_credits_payment(zenis_agent, database).await?;
 
     Ok(())
 }
 
-async fn process_payment(agent: ZenisAgent, database: Arc<ZenisDatabase>) -> anyhow::Result<()> {
+async fn process_agent_credits_payment(
+    agent: ZenisAgent,
+    database: Arc<ZenisDatabase>,
+) -> anyhow::Result<()> {
     let mut agent = agent.1.write().await;
     let payment_method = agent.agent_payment_method;
 
@@ -217,5 +257,14 @@ async fn process_payment(agent: ZenisAgent, database: Arc<ZenisDatabase>) -> any
         }
     }
 
+    Ok(())
+}
+
+pub async fn process_mp_notification(
+    payload: NotificationPayload,
+    client: Arc<ZenisClient>,
+    database: Arc<ZenisDatabase>,
+) -> Result<(), String> {
+    println!("Processing notification: {:?}", payload);
     Ok(())
 }

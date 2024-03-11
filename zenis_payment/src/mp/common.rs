@@ -35,6 +35,11 @@ impl Item {
             category_id: None,
         }
     }
+
+    pub fn with_id(mut self, id: impl ToString) -> Self {
+        self.id = Some(id.to_string());
+        self
+    }
 }
 
 /// Documents for personal identification, such as RG, CPF, CNH
