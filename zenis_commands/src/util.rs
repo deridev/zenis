@@ -1,3 +1,7 @@
+use zenis_common::Color;
+use zenis_data::products::PRODUCTS;
+use zenis_discord::{EmbedAuthor, EmbedBuilder};
+
 pub fn format_duration(date: chrono::Duration) -> String {
     let mut string = String::with_capacity(64);
 
@@ -16,4 +20,19 @@ pub fn format_duration(date: chrono::Duration) -> String {
     ));
 
     string
+}
+
+pub fn generate_products_embed() -> EmbedBuilder {
+    let mut embed = EmbedBuilder::new_common()
+        .set_color(Color::YELLOW)
+        .set_author(EmbedAuthor {
+            name: "Lista de Produtos".to_string(),
+            icon_url: None,
+        });
+
+    for product in PRODUCTS.iter() {
+        embed = embed.add_inlined_field(product.name, format!("R$ {:.2?}", product.price));
+    }
+
+    embed
 }

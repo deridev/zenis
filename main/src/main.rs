@@ -289,25 +289,7 @@ pub async fn process_mp_notification(
         return Ok(());
     };
 
-    let Ok(dm_channel) = client
-        .http
-        .create_private_channel(transaction.discord_user_id)
-        .await
-    else {
-        println!(
-            "Failed to create a private channel for user {:?}",
-            transaction.discord_user_id
-        );
-        return Ok(());
-    };
-
-    let Ok(dm_channel) = dm_channel.model().await else {
-        println!(
-            "Failed to get the private channel for user {:?}",
-            transaction.discord_user_id
-        );
-        return Ok(());
-    };
+    client.delete_transaction(transaction_id).await.ok();
 
     let Some(product) = PRODUCTS
         .iter()
@@ -316,11 +298,10 @@ pub async fn process_mp_notification(
         return Ok(());
     };
 
-    client.delete_transaction(transaction_id).await.ok();
-
     let mut embed = EmbedBuilder::new_common()
         .set_color(Color::GREEN)
-        .set_description(format!("## ✅ Pagamento aprovado!\n\nVocê efetuou a compra do produto **{}** no valor de **R$ {:.2?}**.\nAproveite ZenisAI!", product.name, product.price));
+        .set_description(format!("## ✅ Pagamento aprovado!\n\nVocê efetuou a compra do produto **{}** no valor de **R$ {:.2?}**.\nAproveite ZenisAI!", product.name, product.price))
+        .add_footer_text("Algum problema? Contate o suporte do ZenisAI no servidor oficial (/servidor)!");
 
     match transaction.credit_destination {
         CreditDestination::User(user_id) => {
@@ -351,6 +332,26 @@ pub async fn process_mp_notification(
             );
         }
     }
+
+    let Ok(dm_channel) = client
+        .http
+        .create_private_channel(transaction.discord_user_id)
+        .await
+    else {
+        println!(
+            "Failed to create the private channel for user {:?}",
+            transaction.discord_user_id
+        );
+        return Ok(());
+    };
+
+    let Ok(dm_channel) = dm_channel.model().await else {
+        println!(
+            "Failed to get the private channel for user {:?}",
+            transaction.discord_user_id
+        );
+        return Ok(());
+    };
 
     client
         .http

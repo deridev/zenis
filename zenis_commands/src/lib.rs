@@ -20,6 +20,7 @@ macro_rules! register_command {
     }};
 }
 
+mod buy;
 mod common;
 mod guild;
 mod invoke;
@@ -36,6 +37,7 @@ pub static COMMANDS: Lazy<CommandMap> = Lazy::new(|| {
     register_command!(map, invoke::InvokeCommand);
     register_command!(map, wallet::WalletCommand);
     register_command!(map, guild::GuildCommand);
+    register_command!(map, buy::BuyCommand);
 
     register_command!(map, owner::OwnerCommand);
 

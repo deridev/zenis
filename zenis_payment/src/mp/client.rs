@@ -84,7 +84,7 @@ impl MercadoPagoClient {
         user_id: Id<UserMarker>,
         destination: CreditDestination,
         items: Vec<Item>,
-    ) -> anyhow::Result<CheckoutProPreferencesResponse> {
+    ) -> anyhow::Result<(CheckoutProPreferencesResponse, Transaction)> {
         let transaction = Transaction {
             id: TransactionId::new(),
             credit_destination: destination,
@@ -110,9 +110,9 @@ impl MercadoPagoClient {
             .json::<CheckoutProPreferencesResponse>()
             .await?;
 
-        self.transactions.write().await.push(transaction);
+        self.transactions.write().await.push(transaction.clone());
 
-        Ok(response)
+        Ok((response, transaction))
     }
 
     pub async fn get_preference(

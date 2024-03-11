@@ -9,7 +9,8 @@ use std::{
 };
 use tokio::sync::RwLock;
 use zenis_ai::{claude_brain::ClaudeBrain, Agent, CreditsPaymentMethod};
-use zenis_common::Color;
+use zenis_common::{config, Color};
+use zenis_data::products::Product;
 use zenis_database::{
     agent_model::{AgentModel, AgentPricing},
     ZenisDatabase,
@@ -25,7 +26,10 @@ use zenis_discord::{
     },
     DiscordHttpClient, EmbedBuilder,
 };
-use zenis_payment::mp::client::{MercadoPagoClient, Transaction, TransactionId};
+use zenis_payment::mp::{
+    client::{CreditDestination, MercadoPagoClient, Transaction, TransactionId},
+    common::Item,
+};
 
 async fn load_png_from_url(url: &str) -> anyhow::Result<String> {
     let client = reqwest::Client::new();
@@ -94,6 +98,36 @@ impl ZenisClient {
 
     pub async fn delete_transaction(&self, id: TransactionId) -> anyhow::Result<()> {
         self.mp_client.delete_transaction(id).await
+    }
+
+    pub async fn create_transaction(
+        &self,
+        user_id: Id<UserMarker>,
+        product: &Product,
+        destination: CreditDestination,
+    ) -> anyhow::Result<(Transaction, String)> {
+        let (checkout, transaction) = self
+            .mp_client
+            .create_preference(
+                user_id,
+                destination,
+                vec![Item::simple(
+                    product.price,
+                    product.name,
+                    product.description,
+                    1,
+                )],
+            )
+            .await?;
+
+        Ok((
+            transaction,
+            if config::DEBUG {
+                checkout.checkout_sandbox_url
+            } else {
+                checkout.checkout_url
+            },
+        ))
     }
 
     pub async fn create_agent(

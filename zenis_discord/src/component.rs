@@ -64,6 +64,11 @@ impl ButtonBuilder {
         self
     }
 
+    pub fn set_url(mut self, url: impl ToString) -> Self {
+        self.data.url = Some(url.to_string());
+        self
+    }
+
     pub fn set_disabled(mut self, disabled: bool) -> Self {
         self.data.disabled = disabled;
         self
