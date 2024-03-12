@@ -289,6 +289,10 @@ pub async fn process_mp_notification(
         return Ok(());
     };
 
+    let payment = client.mp_client.get_payment(payload.data.id).await?;
+
+    println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\nTHE PAYMENT OF THE NOTIFICATION: {:?}\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!", payment);
+
     client.delete_transaction(transaction_id).await.ok();
 
     let Some(product) = PRODUCTS

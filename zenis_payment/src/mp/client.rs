@@ -10,7 +10,7 @@ use zenis_discord::twilight_model::id::{
     Id,
 };
 
-use super::{common::Item, preference::*};
+use super::{common::{Item, PaymentPayload}, preference::*};
 
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Default,
@@ -144,5 +144,21 @@ impl MercadoPagoClient {
         transactions.retain(|t| t.id != id);
 
         Ok(())
+    }
+
+    pub async fn get_payment(&self, id: String) -> anyhow::Result<PaymentPayload> {
+        let response = self
+            .client
+            .get(format!(
+                "https://api.mercadopago.com/v1/payments/{}",
+                id
+            ))
+            .bearer_auth(&self.access_token)
+            .send()
+            .await?
+            .json::<PaymentPayload>()
+            .await?;
+
+        Ok(response)
     }
 }
