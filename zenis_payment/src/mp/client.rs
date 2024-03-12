@@ -3,6 +3,7 @@ use std::sync::{
     Arc,
 };
 
+use chrono::TimeDelta;
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 use zenis_discord::twilight_model::id::{
@@ -101,6 +102,7 @@ impl MercadoPagoClient {
         let request = CheckoutProPreference::builder()
             .with_notification_url(self.notification_url(transaction.id))
             .with_items(items.clone())
+            .with_expiration_duration(TimeDelta::try_minutes(30).expect("TimeDelta::try_minutes failed. It should never fail."))
             .build();
 
         let response = self

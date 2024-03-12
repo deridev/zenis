@@ -30,6 +30,8 @@ pub struct CheckoutProPreference {
     pub payer: Option<CheckoutProPayer>,
     pub items: Vec<Item>,
     pub expires: bool,
+    pub expiration_date_from: Option<String>,
+    pub expiration_date_to: Option<String>,
     pub notification_url: String,
     pub external_reference: Option<String>,
     pub payment_methods: PreferencePaymentMethods,
@@ -64,8 +66,13 @@ impl PreferenceBuilder {
         self
     }
 
-    pub fn expires(mut self, expires: bool) -> Self {
-        self.preference.expires = expires;
+    pub fn with_expiration_duration(mut self, expiration_duration: chrono::Duration) -> Self {
+        let now = chrono::Utc::now();
+        let expiration_date_from = now + expiration_duration;
+
+        self.preference.expires = true;
+        self.preference.expiration_date_from = Some(now.to_rfc3339());
+        self.preference.expiration_date_to = Some(expiration_date_from.to_rfc3339());
         self
     }
 
