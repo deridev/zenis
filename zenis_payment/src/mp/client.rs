@@ -155,9 +155,10 @@ impl MercadoPagoClient {
             ))
             .bearer_auth(&self.access_token)
             .send()
+            .await?
+            .json::<PaymentPayload>()
             .await?;
-            println!("$$$$$$$$$$$$$$$$$$$$$$$$ {:?}", response.text().await?);
 
-        Ok(PaymentPayload::default())
+        Ok(response)
     }
 }
