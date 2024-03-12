@@ -289,9 +289,72 @@ pub async fn process_mp_notification(
         return Ok(());
     };
 
-    let payment = client.mp_client.get_payment(payload.data.id).await.unwrap();
+    let payment = client.mp_client.get_payment(payload.data.id).await?;
 
-    println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\nTHE PAYMENT OF THE NOTIFICATION: {:?}\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!", payment);
+    macro_rules! get_dm_channel {
+        () => {{
+            let Ok(dm_channel) = client
+                .http
+                .create_private_channel(transaction.discord_user_id)
+                .await
+            else {
+                println!(
+                    "Failed to create the private channel for user {:?}",
+                    transaction.discord_user_id
+                );
+                return Ok(());
+            };
+
+            let Ok(dm_channel) = dm_channel.model().await else {
+                println!(
+                    "Failed to get the private channel for user {:?}",
+                    transaction.discord_user_id
+                );
+                return Ok(());
+            };
+
+            dm_channel
+        }};
+    }
+
+    match payment.status.as_str() {
+        "approved" => {
+            // Continue
+        }
+        "pending" => {
+            let dm_channel = get_dm_channel!();
+
+            let embed = EmbedBuilder::new_common()
+                .set_color(Color::YELLOW)
+                .set_description("## ⏳ Pagamento pendente! Mantenha sua DM aberta para receber notificações sobre o status do pagamento.")
+                .add_footer_text("Algum problema? Contate o suporte do ZenisAI no servidor oficial (/servidor)!");
+
+            client
+                .http
+                .create_message(dm_channel.id)
+                .embeds(&[embed.build()])?
+                .await?;
+            return Ok(());
+        }
+        "cancelled" | "rejected" => {
+            let dm_channel = get_dm_channel!();
+
+            let embed = EmbedBuilder::new_common()
+                .set_color(Color::RED)
+                .set_description("## ❌ Pagamento recusado!\n\nO pagamento foi recusado ou cancelado. Tente novamente mais tarde.")
+                .add_footer_text("Algum problema? Contate o suporte do ZenisAI no servidor oficial (/servidor)!");
+
+            client
+                .http
+                .create_message(dm_channel.id)
+                .embeds(&[embed.build()])?
+                .await?;
+            return Ok(());
+        }
+        _ => {
+            return Ok(());
+        }
+    }
 
     client.delete_transaction(transaction_id).await.ok();
 
@@ -337,25 +400,7 @@ pub async fn process_mp_notification(
         }
     }
 
-    let Ok(dm_channel) = client
-        .http
-        .create_private_channel(transaction.discord_user_id)
-        .await
-    else {
-        println!(
-            "Failed to create the private channel for user {:?}",
-            transaction.discord_user_id
-        );
-        return Ok(());
-    };
-
-    let Ok(dm_channel) = dm_channel.model().await else {
-        println!(
-            "Failed to get the private channel for user {:?}",
-            transaction.discord_user_id
-        );
-        return Ok(());
-    };
+    let dm_channel = get_dm_channel!();
 
     client
         .http
