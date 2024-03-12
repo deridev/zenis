@@ -289,7 +289,7 @@ pub async fn process_mp_notification(
         return Ok(());
     };
 
-    let payment = client.mp_client.get_payment(payload.data.id).await?;
+    let payment = client.mp_client.get_payment(payload.data.id).await.unwrap();
 
     println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\nTHE PAYMENT OF THE NOTIFICATION: {:?}\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!", payment);
 

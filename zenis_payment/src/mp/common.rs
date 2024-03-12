@@ -155,7 +155,7 @@ impl CheckoutProPayer {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PaymentPayload {
-    pub id: String,
+    pub id: i64,
     pub date_created: String,
     pub date_approved: String,
     pub payment_method_id: String,
