@@ -35,7 +35,8 @@ pub async fn guild(mut ctx: CommandContext) -> anyhow::Result<()> {
         .add_inlined_field(
             "💸 Créditos Públicos",
             format!("{}₢", guild_data.public_credits),
-        );
+        )
+        .add_footer_text(format!("ID do servidor: {}", guild_id));
 
     ctx.reply(embed).await?;
 

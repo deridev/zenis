@@ -39,12 +39,14 @@ pub async fn buy(mut ctx: CommandContext) -> anyhow::Result<()> {
     let products_embed = generate_products_embed();
 
     let message = ctx
-        .send(
+        .send_in_channel(
             Response::new_user_reply(&author, "escolha um produto para comprar:")
                 .add_emoji_prefix("🛒")
                 .add_embed(products_embed)
                 .set_components(make_multiple_rows(products_buttons.clone())),
         )
+        .await?
+        .model()
         .await?;
 
     let Ok(Some(interaction)) = ctx
@@ -119,6 +121,11 @@ async fn get_destination(
     ctx: &mut CommandContext,
     author: &User,
 ) -> anyhow::Result<CreditDestination> {
+    let channel = ctx
+        .interaction
+        .channel
+        .clone()
+        .context("Expected a channel ID")?;
     let buttons = vec![
         ButtonBuilder::new()
             .set_custom_id("user")
@@ -232,13 +239,6 @@ async fn get_destination(
     let interaction_ctx = CommandContext::from_with_interaction(ctx, Box::new(interaction));
     *ctx = interaction_ctx;
 
-    let channel_id = ctx
-        .interaction
-        .channel
-        .clone()
-        .context("Expected a channel ID")?
-        .id;
-
     ctx.update_message(Response::default().set_components(make_multiple_rows(buttons)))
         .await?;
 
@@ -248,7 +248,7 @@ async fn get_destination(
     let Ok(Some(message)) = ctx
         .watcher
         .await_single_message(
-            channel_id,
+            channel.id,
             move |message| message.author.id == author_id,
             WatcherOptions {
                 timeout: Duration::from_secs(60),
@@ -259,9 +259,14 @@ async fn get_destination(
         bail!("No response.")
     };
 
-    let guild_id = message.content.parse::<u64>()?;
-    let Some(guild_id) = Id::new_checked(guild_id) else {
+    let Ok(guild_id) = message.content.parse::<u64>() else {
         ctx.send_in_channel("ID inválido.").await?;
+        bail!("Invalid guild ID")
+    };
+
+    let Some(guild_id) = Id::new_checked(guild_id) else {
+        ctx.send_in_channel("ID inválido. (ID não pode ser zero)")
+            .await?;
         bail!("Invalid guild ID")
     };
 
