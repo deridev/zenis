@@ -3,6 +3,28 @@ use serde_aux::prelude::*;
 
 use super::common::{CheckoutProPayer, Item, PersonalIdentification};
 
+#[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
+pub struct PreferencePaymentMethods {
+    pub excluded_payment_methods: Vec<String>,
+    pub excluded_payment_types: Vec<String>,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub default_payment_method_id: String,
+    pub installments: Option<u64>,
+    pub default_installments: Option<u64>,
+}
+
+impl Default for PreferencePaymentMethods {
+    fn default() -> Self {
+        Self {
+            excluded_payment_methods: vec![],
+            excluded_payment_types: vec![],
+            default_payment_method_id: "pix".to_string(),
+            installments: None,
+            default_installments: None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize, Default)]
 pub struct CheckoutProPreference {
     pub payer: Option<CheckoutProPayer>,
@@ -10,6 +32,7 @@ pub struct CheckoutProPreference {
     pub expires: bool,
     pub notification_url: String,
     pub external_reference: Option<String>,
+    pub payment_methods: PreferencePaymentMethods,
 }
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]

@@ -50,7 +50,13 @@ pub const PRODUCTS: &[Product] = &[
 #[test]
 fn calculate_price_per_product() {
     for product in PRODUCTS {
-        let price_per_credit = product.price / product.amount_of_credits as f64;
-        println!("{} -> PRICE PER CREDIT: {}", product.id, price_per_credit);
+        let credit_cost = 0.01;
+        let ppc = product.price / product.amount_of_credits as f64;
+        let ppm = ppc * 5.0;
+
+        let lpc = ppc - credit_cost;
+        let lpm = lpc * 5.0;
+        let total_profit = lpc * product.amount_of_credits as f64;
+        println!("{}\n   >>> -[PPC: R$ {ppc} ______ PPM: R$ {ppm}]\n   >>> +[LPC: R$ {lpc} ______ LPM: R$ {lpm}]\n   Total profit: R$ {total_profit}\n", product.id);
     }
 }
