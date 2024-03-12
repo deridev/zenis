@@ -97,7 +97,7 @@ pub async fn buy(mut ctx: CommandContext) -> anyhow::Result<()> {
             icon_url: Some(author.avatar_url()),
         })
         .set_description(format!(
-            "### Você está comprando {}!\n\n**Preço:** R$ {}",
+            "### Você está comprando {}!\n\n**Preço:** R$ {}\n\n* *O processo de compra é rápido e seguro.*",
             product.name, product.price
         ))
         .add_footer_text("O botão de pagamento expira em 30 minutos.");
@@ -105,8 +105,7 @@ pub async fn buy(mut ctx: CommandContext) -> anyhow::Result<()> {
     ctx.send(
         Response::from(payment_embed).set_components(make_multiple_rows(vec![ButtonBuilder::new(
         )
-        .set_custom_id("any")
-        .set_label("Pagar")
+        .set_label("Pagar!")
         .set_url(checkout_url)
         .set_style(ButtonStyle::Link)])),
     )
