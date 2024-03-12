@@ -119,14 +119,25 @@ async fn main() {
                                 }
                             };
 
-                            process_mp_notification(
+                            if let Err(e) = process_mp_notification(
                                 transaction_id.into(),
-                                notification_payload,
+                                notification_payload.clone(),
                                 client.clone(),
                                 database.clone(),
                             )
                             .await
-                            .ok();
+                            {
+                                client
+                                    .emit_error_hook(
+                                        format!(
+                                            "NOTIFICATION PAYLOAD:\n{:?}",
+                                            notification_payload
+                                        ),
+                                        e,
+                                    )
+                                    .await
+                                    .ok();
+                            }
                         } else {
                             println!("Received notification is not a payment notification");
                         }
@@ -283,9 +294,7 @@ pub async fn process_mp_notification(
     client: Arc<ZenisClient>,
     database: Arc<ZenisDatabase>,
 ) -> anyhow::Result<()> {
-    println!("{:?}", payload);
     let Some(transaction) = client.get_transaction(transaction_id).await else {
-        println!("Transaction with ID {transaction_id:?} NOT FOUND.");
         return Ok(());
     };
 
@@ -293,29 +302,21 @@ pub async fn process_mp_notification(
 
     macro_rules! get_dm_channel {
         () => {{
-            let Ok(dm_channel) = client
+            client
                 .http
                 .create_private_channel(transaction.discord_user_id)
-                .await
-            else {
-                println!(
-                    "Failed to create the private channel for user {:?}",
-                    transaction.discord_user_id
-                );
-                return Ok(());
-            };
-
-            let Ok(dm_channel) = dm_channel.model().await else {
-                println!(
-                    "Failed to get the private channel for user {:?}",
-                    transaction.discord_user_id
-                );
-                return Ok(());
-            };
-
-            dm_channel
+                .await?
+                .model()
+                .await?
         }};
     }
+
+    let Some(product) = PRODUCTS
+        .iter()
+        .find(|product| product.id == transaction.product_id)
+    else {
+        return Ok(());
+    };
 
     match payment.status.as_str() {
         "approved" => {
@@ -328,7 +329,6 @@ pub async fn process_mp_notification(
                 .set_color(Color::YELLOW)
                 .set_description("## ⏳ Pagamento pendente! Mantenha sua DM aberta para receber notificações sobre o status do pagamento.")
                 .add_footer_text("Algum problema? Contate o suporte do ZenisAI no servidor oficial (/servidor)!");
-
             client
                 .http
                 .create_message(dm_channel.id)
@@ -349,6 +349,12 @@ pub async fn process_mp_notification(
                 .create_message(dm_channel.id)
                 .embeds(&[embed.build()])?
                 .await?;
+
+            client
+                .emit_transaction_hook(false, 0.0, product, transaction.discord_user_id, payment.id)
+                .await
+                .ok();
+
             return Ok(());
         }
         _ => {
@@ -357,13 +363,6 @@ pub async fn process_mp_notification(
     }
 
     client.delete_transaction(transaction_id).await.ok();
-
-    let Some(product) = PRODUCTS
-        .iter()
-        .find(|product| product.id == transaction.product_id)
-    else {
-        return Ok(());
-    };
 
     let mut embed = EmbedBuilder::new_common()
         .set_color(Color::GREEN)
@@ -407,6 +406,17 @@ pub async fn process_mp_notification(
         .create_message(dm_channel.id)
         .embeds(&[embed.build()])?
         .await?;
+
+    client
+        .emit_transaction_hook(
+            true,
+            payment.transaction_amount as f64,
+            product,
+            transaction.discord_user_id,
+            payment.id,
+        )
+        .await
+        .ok();
 
     Ok(())
 }

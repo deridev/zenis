@@ -1,7 +1,7 @@
 use anyhow::bail;
 use base64::Engine;
 use std::{
-    collections::{HashMap, HashSet},
+    collections::HashMap,
     sync::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc,
@@ -58,7 +58,6 @@ pub struct ZenisAgent(pub usize, pub Arc<RwLock<Agent<ClaudeBrain>>>);
 pub struct ZenisClient {
     pub http: Arc<DiscordHttpClient>,
     pub is_ready: AtomicBool,
-    pub users_fighting: RwLock<HashSet<Id<UserMarker>>>,
 
     pub agents: RwLock<HashMap<Id<ChannelMarker>, Vec<ZenisAgent>>>,
     pub mp_client: Arc<MercadoPagoClient>,
@@ -69,7 +68,6 @@ impl ZenisClient {
         Self {
             http: Arc::new(DiscordHttpClient::new(token)),
             is_ready: AtomicBool::new(false),
-            users_fighting: RwLock::new(HashSet::new()),
 
             agents: RwLock::new(HashMap::new()),
             mp_client: mp,
@@ -231,15 +229,68 @@ impl ZenisClient {
         Ok(())
     }
 
-    pub async fn mark_user_as_fighter(&self, id: Id<UserMarker>) {
-        self.users_fighting.write().await.insert(id);
+    pub async fn emit_error_hook(
+        &self,
+        mut header: String,
+        error: anyhow::Error,
+    ) -> anyhow::Result<()> {
+        let hook_id = std::env::var("ERROR_HOOK_ID")?.parse::<u64>()?;
+        let hook_token = std::env::var("ERROR_HOOK_TOKEN")?;
+
+        let mut error = error.to_string();
+        error.truncate(512);
+        header.truncate(512);
+        let error = format!(
+            "## Header:\n```js{header}```\n## Body:\n```xl\n{}\n```",
+            error
+        );
+
+        let embed = EmbedBuilder::new_common()
+            .set_color(Color::RED)
+            .set_description(error)
+            .build();
+
+        self.http
+            .execute_webhook(Id::new(hook_id), &hook_token)
+            .embeds(&[embed])?
+            .await?;
+
+        Ok(())
     }
 
-    pub async fn remove_user_fighting_mark(&self, id: Id<UserMarker>) {
-        self.users_fighting.write().await.remove(&id);
-    }
+    pub async fn emit_transaction_hook(
+        &self,
+        success: bool,
+        amount: f64,
+        product: &Product,
+        user_id: Id<UserMarker>,
+        payment_id: i64,
+    ) -> anyhow::Result<()> {
+        let hook_id = std::env::var("TRANSACTION_HOOK_ID")?.parse::<u64>()?;
+        let hook_token = std::env::var("TRANSACTION_HOOK_TOKEN")?;
 
-    pub async fn is_user_fighting(&self, id: Id<UserMarker>) -> bool {
-        self.users_fighting.read().await.contains(&id)
+        let user = self.get_user(user_id).await?;
+
+        let embed = EmbedBuilder::new_common()
+            .set_author_to_user(&user)
+            .set_color(if success { Color::GREEN } else { Color::RED })
+            .set_description(format!(
+                "## Pagamento!\n**Sucesso**: `{}`\n**Valor**: `R$ {:.2?}`\n\n**Produto:** `{}`",
+                if success { "✅" } else { "❌" },
+                amount,
+                product.name
+            ))
+            .add_footer_text(format!(
+                "ID do usuário: {}\nID do payment: {}",
+                user.id, payment_id
+            ))
+            .build();
+
+        self.http
+            .execute_webhook(Id::new(hook_id), &hook_token)
+            .embeds(&[embed])?
+            .await?;
+
+        Ok(())
     }
 }

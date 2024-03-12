@@ -102,7 +102,10 @@ impl MercadoPagoClient {
         let request = CheckoutProPreference::builder()
             .with_notification_url(self.notification_url(transaction.id))
             .with_items(items.clone())
-            .with_expiration_duration(TimeDelta::try_minutes(30).expect("TimeDelta::try_minutes failed. It should never fail."))
+            .with_expiration_duration(
+                TimeDelta::try_minutes(30)
+                    .expect("TimeDelta::try_minutes failed. It should never fail."),
+            )
             .build();
 
         let response = self
