@@ -96,7 +96,7 @@ pub async fn buy(mut ctx: CommandContext) -> anyhow::Result<()> {
 
         dm_channel = dm;
 
-        ctx.send_in_channel(Response::new_user_reply(&author, "te enviei uma mensagem direta! Abra sua DM para completar o pagamento. Por motivos de segurança, não podemos continuar em um canal público.")).await.ok();
+        ctx.send_in_channel(Response::new_user_reply(&author, "te enviei uma mensagem direta! Abra sua DM para completar o pagamento. Por motivos de segurança, não podemos continuar em um canal público.\n❔ **Não recebeu a mensagem?**\nAbra sua DM e tente novamente. Suas mensagens privadas provavelmente são privadas.")).await.ok();
     }
 
     // TODO: almost there 🙋

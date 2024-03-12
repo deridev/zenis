@@ -14,35 +14,35 @@ pub const PRODUCTS: &[Product] = &[
         id: "500_credits",
         name: "500 Créditos",
         description: DEFAULT_DESCRIPTION,
-        price: 8.0,
+        price: 9.0,
         amount_of_credits: 500,
     },
     Product {
         id: "1000_credits",
         name: "1000 Créditos",
         description: DEFAULT_DESCRIPTION,
-        price: 15.0,
+        price: 17.0,
         amount_of_credits: 1000,
     },
     Product {
         id: "2000_credits",
         name: "2,000 Créditos",
         description: DEFAULT_DESCRIPTION,
-        price: 26.0,
+        price: 30.0,
         amount_of_credits: 2000,
     },
     Product {
         id: "5000_credits",
         name: "5,000 Créditos",
         description: DEFAULT_DESCRIPTION,
-        price: 64.0,
+        price: 70.0,
         amount_of_credits: 5000,
     },
     Product {
         id: "10000_credits",
         name: "10,000 Créditos",
         description: DEFAULT_DESCRIPTION,
-        price: 125.0,
+        price: 130.0,
         amount_of_credits: 10000,
     },
 ];
@@ -50,7 +50,7 @@ pub const PRODUCTS: &[Product] = &[
 #[test]
 fn calculate_price_per_product() {
     for product in PRODUCTS {
-        let credit_cost = 0.01;
+        let credit_cost = 0.012;
         let ppc = product.price / product.amount_of_credits as f64;
         let ppm = ppc * 5.0;
 
