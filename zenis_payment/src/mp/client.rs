@@ -47,7 +47,7 @@ pub enum CreditDestination {
 pub struct Transaction {
     pub id: TransactionId,
     pub discord_user_id: Id<UserMarker>,
-    pub item: String,
+    pub product_id: String,
     pub credit_destination: CreditDestination,
 }
 
@@ -89,7 +89,7 @@ impl MercadoPagoClient {
             id: TransactionId::new(),
             credit_destination: destination,
             discord_user_id: user_id,
-            item: items
+            product_id: items
                 .first()
                 .map(|i| i.id.clone().unwrap_or_default())
                 .unwrap_or_default(),

@@ -111,12 +111,10 @@ impl ZenisClient {
             .create_preference(
                 user_id,
                 destination,
-                vec![Item::simple(
-                    product.price,
-                    product.name,
-                    product.description,
-                    1,
-                )],
+                vec![
+                    Item::simple(product.price, product.name, product.description, 1)
+                        .with_id(product.id),
+                ],
             )
             .await?;
 

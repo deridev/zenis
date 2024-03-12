@@ -293,7 +293,7 @@ pub async fn process_mp_notification(
 
     let Some(product) = PRODUCTS
         .iter()
-        .find(|product| product.id == transaction.item)
+        .find(|product| product.id == transaction.product_id)
     else {
         return Ok(());
     };

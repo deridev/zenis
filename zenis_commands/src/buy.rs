@@ -41,6 +41,7 @@ pub async fn buy(mut ctx: CommandContext) -> anyhow::Result<()> {
     let message = ctx
         .send(
             Response::new_user_reply(&author, "escolha um produto para comprar:")
+                .add_emoji_prefix("🛒")
                 .add_embed(products_embed)
                 .set_components(make_multiple_rows(products_buttons.clone())),
         )
@@ -97,8 +98,8 @@ pub async fn buy(mut ctx: CommandContext) -> anyhow::Result<()> {
             icon_url: Some(author.avatar_url()),
         })
         .set_description(format!(
-            "### Você está comprando {}!\n\n**Preço:** R$ {}\n\n* *O processo de compra é rápido e seguro.*",
-            product.name, product.price
+            "### {} Você está comprando {}!\n\n## **Preço:** R$ {}\n\n* *O processo de compra é rápido e seguro. PIX é o método de pagamento padrão por ser mais rápido e prático, mas aceitamos crédito, débito e boleto.*",
+            emojis::CREDIT, product.name, product.price
         ))
         .add_footer_text("O botão de pagamento expira em 30 minutos.");
 
