@@ -12,17 +12,6 @@ use crate::{prelude::*, util::generate_products_embed};
 #[name("comprar")]
 pub async fn buy(mut ctx: CommandContext) -> anyhow::Result<()> {
     let author = ctx.author().await?;
-    if ctx.interaction.guild_id.is_some() {
-        ctx.reply(
-            Response::new_user_reply(
-                &author,
-                "**por motivos de segurança, você só pode usar esse comando nas minhas mensagens diretas.**\nEnvie uma DM para mim e use o comando **/comprar** lá! O processo é rápido e seguro.",
-            )
-            .add_emoji_prefix("🛡️"),
-        )
-        .await?;
-        return Ok(());
-    }
 
     let destination = get_destination(&mut ctx, &author).await?;
 
@@ -87,6 +76,29 @@ pub async fn buy(mut ctx: CommandContext) -> anyhow::Result<()> {
         bail!("Product not found")
     };
 
+    let mut dm_channel = ctx
+        .interaction
+        .channel
+        .clone()
+        .context("A channel SHOULD be present")?;
+
+    let dm_error_response = Response::new_user_reply(&author, "eu tentei te enviar uma mensagem direta mas não consegui! Por motivos de segurança, a última etapa do **/comprar** precisa ser privada. Abra sua DM e tente novamente!").add_emoji_prefix(emojis::ERROR);
+    if ctx.interaction.guild_id.is_some() {
+        let Ok(dm) = ctx.client.http.create_private_channel(author.id).await else {
+            ctx.send(dm_error_response).await?;
+            return Ok(());
+        };
+
+        let Ok(dm) = dm.model().await else {
+            ctx.send(dm_error_response).await?;
+            return Ok(());
+        };
+
+        dm_channel = dm;
+
+        ctx.send_in_channel(Response::new_user_reply(&author, "te enviei uma mensagem direta! Abra sua DM para completar o pagamento. Por motivos de segurança, não podemos continuar em um canal público.")).await.ok();
+    }
+
     // TODO: almost there 🙋
     let (_, checkout_url) = ctx
         .client
@@ -105,7 +117,8 @@ pub async fn buy(mut ctx: CommandContext) -> anyhow::Result<()> {
         ))
         .add_footer_text("O botão de pagamento expira em 30 minutos.");
 
-    ctx.send(
+    ctx.send_in_specific_channel(
+        dm_channel.id,
         Response::from(payment_embed).set_components(make_multiple_rows(vec![ButtonBuilder::new(
         )
         .set_label("Pagar!")
@@ -242,7 +255,7 @@ async fn get_destination(
     ctx.update_message(Response::default().set_components(make_multiple_rows(buttons)))
         .await?;
 
-    ctx.send(Response::new_user_reply(author, "escreva o ID do servidor que você quer comprar créditos: ||*(Se você não sabe o ID, use **/servidor** no servidor desejado para ver o ID)*||")).await?;
+    ctx.send(Response::new_user_reply(author, "escreva o ID do servidor que você quer comprar créditos. Se quiser comprar para o servidor atual, envie 0: ||*(Se você não sabe o ID, use **/servidor** no servidor desejado para ver o ID)*||")).await?;
 
     let author_id = author.id;
     let Ok(Some(message)) = ctx
@@ -259,7 +272,13 @@ async fn get_destination(
         bail!("No response.")
     };
 
-    let Ok(guild_id) = message.content.parse::<u64>() else {
+    let mut content = message.content.clone();
+
+    if content == "0" {
+        content = format!("{}", ctx.interaction.guild_id.unwrap_or(Id::new(123)));
+    }
+
+    let Ok(guild_id) = content.parse::<u64>() else {
         ctx.send_in_channel("ID inválido.").await?;
         bail!("Invalid guild ID")
     };

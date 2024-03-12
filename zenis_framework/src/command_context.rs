@@ -11,7 +11,10 @@ use zenis_discord::{
             attachment::Attachment,
             interaction::{InteractionResponse, InteractionResponseType},
         },
-        id::{marker::UserMarker, Id},
+        id::{
+            marker::{ChannelMarker, UserMarker},
+            Id,
+        },
         user::User,
     },
     Interaction, InteractionData,
@@ -146,6 +149,22 @@ impl CommandContext {
             .client
             .http
             .create_message(channel.id)
+            .payload_json(&json)
+            .await?)
+    }
+
+    pub async fn send_in_specific_channel(
+        &mut self,
+        channel_id: Id<ChannelMarker>,
+        response: impl Into<Response>,
+    ) -> anyhow::Result<ApiResponse<Message>> {
+        let response = response.into();
+        let json = response.to_json();
+
+        Ok(self
+            .client
+            .http
+            .create_message(channel_id)
             .payload_json(&json)
             .await?)
     }
