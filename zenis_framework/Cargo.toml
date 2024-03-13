@@ -21,7 +21,4 @@ rand = { workspace = true }
 tokio = { workspace = true }
 tokio-stream = { workspace = true }
 reqwest = { workspace = true }
-crossfire = { workspace = true }
-
-dashmap = { default-features = false, version = "5.5.3" }
 base64 = "0.22"
