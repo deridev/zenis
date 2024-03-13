@@ -1,10 +1,11 @@
 use std::sync::{atomic::Ordering, Arc};
 
 use zenis_common::{config, Probability};
-use zenis_database::ZenisDatabase;
+use zenis_database::{instance_model::InstanceMessage, ZenisDatabase};
 use zenis_discord::{
     twilight_gateway::Event,
     twilight_model::gateway::payload::incoming::{InteractionCreate, MessageCreate, Ready},
+    UserExtension,
 };
 use zenis_framework::{watcher::Watcher, ZenisClient};
 
@@ -85,27 +86,37 @@ impl EventHandler {
         }
 
         let author = message.author.clone();
-        let Some(agents) = self.client.get_agents(channel.id).await else {
-            return Ok(());
-        };
+        let mut instances = self
+            .database
+            .instances()
+            .get_all_by_channel(channel.id.get())
+            .await?;
 
-        for agent in agents {
-            let mut agent = agent.1.write().await;
+        println!("> Received message from {}", author.name);
 
-            #[allow(clippy::needless_bool_assign)]
-            if message.author.bot {
-                agent.awaiting_message = Probability::new(80).generate_random_bool();
-            } else {
-                agent.awaiting_message = false;
+        for instance in instances.iter_mut() {
+            if instance.agent_name == author.display_name() && author.bot {
+                continue;
             }
 
-            agent
-                .enqueue_message(author.clone(), message.content.clone())
-                .await;
-            agent.last_received_message_timestamp = message.timestamp.as_secs();
-            if message.author.bot {
-                agent.last_received_message_timestamp += 3;
+            let mut content = message.content.clone();
+            content.truncate(1024);
+
+            instance.push_message(InstanceMessage {
+                is_user: true,
+                content: format!(
+                    "<{} (@{})>: {content}",
+                    message.author.display_name(),
+                    message.author.name
+                ),
+            });
+            instance.is_awaiting_new_messages = false;
+
+            if author.bot && Probability::new(20).generate_random_bool() {
+                instance.is_awaiting_new_messages = true;
             }
+
+            self.database.instances().save(instance.clone()).await?;
         }
 
         Ok(())

@@ -1,5 +1,3 @@
-use zenis_payment::mp::{client::CreditDestination, common::Item};
-
 use crate::prelude::*;
 
 type IdString = String;
@@ -10,7 +8,9 @@ pub enum Command {
     ResetCache(Option<IdString>),
     AddCredits(IdString, i64),
     RemoveCredits(IdString, i64),
-    Test,
+    ClearInstances(String),
+    Accept(String),
+    Reject(String, String),
 }
 
 impl Command {
@@ -19,6 +19,9 @@ impl Command {
         "reset cache [id]",
         "add credits <id> [quantity]",
         "remove credits <id> [quantity]",
+        "clear instances [reason]",
+        "accept <id>",
+        "reject <id> <reason>",
     ];
 
     pub fn parse(input: &str) -> Option<Command> {
@@ -55,18 +58,37 @@ impl Command {
                     _ => None,
                 }
             }
-            "test" => Some(Command::Test),
+            "clear" => {
+                let subcommand = splitted.next()?.to_lowercase();
+
+                match subcommand.as_str() {
+                    "instances" => {
+                        let reason = splitted.collect::<Vec<_>>().join(" ");
+                        Some(Command::ClearInstances(reason))
+                    }
+                    _ => None,
+                }
+            }
+            "accept" => {
+                let id = splitted.next()?.to_lowercase();
+                Some(Command::Accept(id))
+            }
+            "reject" => {
+                let id = splitted.next()?.to_lowercase();
+                let reason = splitted.collect::<Vec<_>>().join(" ");
+                Some(Command::Reject(id, reason))
+            }
             _ => None,
         }
     }
 }
 
-#[command("Comando restrito.")]
-#[name("owner")]
+#[command("Comando restrito para administradores Zenis.")]
+#[name("adm")]
 #[character_required(true)]
-pub async fn owner(
+pub async fn adm(
     mut ctx: CommandContext,
-    #[rename("comando")]
+    #[rename("cmd")]
     #[description("Comando a ser executado")]
     command: String,
 ) -> anyhow::Result<()> {
@@ -205,24 +227,137 @@ pub async fn owner(
                 .await?;
             }
         }
-        Command::Test => {
-            let preference = ctx
-                .client
-                .mp_client
-                .create_preference(
-                    author.id,
-                    CreditDestination::User(author.id),
-                    vec![Item::simple(
-                        15.0,
-                        "1000 Créditos",
-                        "Créditos são usados para interagir com agentes IA",
-                        1,
-                    )
-                    .with_id("1000_credits")],
+        Command::ClearInstances(reason) => {
+            let reason = if reason.is_empty() {
+                "Desligado por administrador Zenis.".to_string()
+            } else {
+                reason.to_string()
+            };
+
+            let instances = ctx.db().instances().all_actives().await?;
+            let mut counter = 0;
+            for mut instance in instances {
+                counter += 1;
+                instance.exit_reason = Some(reason.clone());
+                ctx.db().instances().save(instance).await?;
+            }
+
+            ctx.reply(Response::new_user_reply(
+                &author,
+                format!("**{}** instâncias foram desligadas com sucesso.", counter),
+            ))
+            .await?;
+        }
+        Command::Accept(id) => {
+            let Some(mut agent) = ctx.db().agents().get_by_identifier(id).await? else {
+                ctx.send(
+                    Response::new_user_reply(&author, "agente inválido ou inexistente")
+                        .add_emoji_prefix(emojis::ERROR),
                 )
                 .await?;
+                return Ok(());
+            };
 
-            ctx.reply(format!("```json\n{:?}\n```", preference)).await?;
+            if !agent.is_waiting_for_approval {
+                ctx.send(
+                    Response::new_user_reply(
+                        &author,
+                        "o agente não está em processo de verificação.",
+                    )
+                    .add_emoji_prefix(emojis::ERROR),
+                )
+                .await?;
+                return Ok(());
+            }
+
+            agent.is_waiting_for_approval = false;
+            agent.public = true;
+            ctx.db().agents().save(agent.clone()).await?;
+
+            ctx.send(
+                Response::new_user_reply(&author, "agente aceito com sucesso!")
+                    .add_emoji_prefix(emojis::SUCCESS),
+            )
+            .await
+            .ok();
+
+            let dm = ctx
+                .client
+                .http
+                .create_private_channel(Id::new(agent.creator_user_id))
+                .await?
+                .model()
+                .await?;
+            let embed = EmbedBuilder::new_common()
+                .set_color(Color::GREEN)
+                .set_author(EmbedAuthor {
+                    name: "Agente aceito!".to_string(),
+                    icon_url: agent.agent_url_image.clone(),
+                })
+                .set_description(format!("## {} Agente aceito!\nO seu agente **{}** (`{}`) foi aceito e agora é PÚBLICO. Parabéns!", emojis::SUCCESS, agent.name, agent.identifier));
+
+            ctx.client
+                .http
+                .create_message(dm.id)
+                .embeds(&[embed.build()])?
+                .await
+                .ok();
+        }
+        Command::Reject(id, reason) => {
+            let Some(mut agent) = ctx.db().agents().get_by_identifier(id).await? else {
+                ctx.send(
+                    Response::new_user_reply(&author, "agente inválido ou inexistente")
+                        .add_emoji_prefix(emojis::ERROR),
+                )
+                .await?;
+                return Ok(());
+            };
+
+            if !agent.is_waiting_for_approval {
+                ctx.send(
+                    Response::new_user_reply(
+                        &author,
+                        "o agente não está em processo de verificação.",
+                    )
+                    .add_emoji_prefix(emojis::ERROR),
+                )
+                .await?;
+                return Ok(());
+            }
+
+            agent.is_waiting_for_approval = false;
+            agent.public = false;
+            ctx.db().agents().save(agent.clone()).await?;
+
+            ctx.send(
+                Response::new_user_reply(&author, "agente rejeitado com sucesso!")
+                    .add_emoji_prefix(emojis::SUCCESS),
+            )
+            .await
+            .ok();
+
+            let dm = ctx
+                .client
+                .http
+                .create_private_channel(Id::new(agent.creator_user_id))
+                .await?
+                .model()
+                .await?;
+            let embed = EmbedBuilder::new_common()
+                .set_color(Color::RED)
+                .set_author(EmbedAuthor {
+                    name: "Agente rejeitado!".to_string(),
+                    icon_url: agent.agent_url_image.clone(),
+                })
+                .set_description(format!("## {} Agente rejeitado!\nO seu agente **{}** (`{}`) foi rejeitado.\n**Motivo da recusa:** `{}`", emojis::ERROR, agent.name, agent.identifier, reason))
+                .add_footer_text("Não acha que a recusa foi justa? Entre no /servidoroficial e fale com o suporte do bot.");
+
+            ctx.client
+                .http
+                .create_message(dm.id)
+                .embeds(&[embed.build()])?
+                .await
+                .ok();
         }
     }
 

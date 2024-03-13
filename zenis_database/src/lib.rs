@@ -1,15 +1,22 @@
+pub mod agent_commands;
 pub mod agent_model;
 pub mod common;
 pub mod guild_commands;
 pub mod guild_model;
+pub mod instance_commands;
+pub mod instance_model;
 pub mod user_commands;
 pub mod user_model;
 
 use std::sync::Arc;
 
+use agent_commands::AgentCommands;
+use agent_model::AgentModel;
 use bson::doc;
 use guild_commands::GuildCommands;
 use guild_model::GuildModel;
+use instance_commands::InstanceCommands;
+use instance_model::InstanceModel;
 use mongodb::{Client, Collection, Database, IndexModel};
 
 pub use mongodb::bson;
@@ -61,6 +68,28 @@ impl ZenisDatabase {
             )
             .await
             .unwrap();
+
+        // AGENT INDEXES
+        let agents: Collection<AgentModel> = self.db().collection("agents");
+        agents
+            .create_index(
+                IndexModel::builder()
+                    .keys(doc! { "identifier": 1, "tags": 1 })
+                    .build(),
+                None,
+            )
+            .await
+            .unwrap();
+
+        // INSTANCE INDEXES
+        let instances: Collection<InstanceModel> = self.db().collection("instances");
+        instances
+            .create_index(
+                IndexModel::builder().keys(doc! { "channel_id": 1 }).build(),
+                None,
+            )
+            .await
+            .unwrap();
     }
 
     pub fn db(&self) -> Database {
@@ -78,5 +107,15 @@ impl ZenisDatabase {
     pub fn guilds(&self) -> GuildCommands {
         let collection = self.db().collection("guilds");
         GuildCommands::new(collection, self.clone())
+    }
+
+    pub fn agents(&self) -> AgentCommands {
+        let collection = self.db().collection("agents");
+        AgentCommands::new(collection, self.clone())
+    }
+
+    pub fn instances(&self) -> InstanceCommands {
+        let collection = self.db().collection("instances");
+        InstanceCommands::new(collection, self.clone())
     }
 }

@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     brain::{Brain, BrainParameters, DEFAULT_SYSTEM_PROMPT},
+    common::{ChatMessage, ChatResponse, Role},
     util::remove_italic_actions,
 };
 
@@ -37,69 +38,52 @@ pub struct ClaudeBrain;
 
 #[async_trait]
 impl Brain for ClaudeBrain {
-    type ChatMessage = ClaudeChatMessage;
-    type ChatResponse = ClaudeChatResponse;
-
-    fn api_key(&self) -> String {
+    fn api_key(&self, _debug: bool) -> String {
         std::env::var("CLAUDE_API_KEY").expect("Expected a valid Claude API key")
     }
 
     fn default_parameters(&self) -> BrainParameters {
         BrainParameters {
+            debug: true,
             model: "claude-3-sonnet-20240229".to_string(),
             max_tokens: 512,
-            system_message: String::new(),
+            system_prompt: String::new(),
             strip_italic_actions: true,
-        }
-    }
-
-    fn system_messages(&self, _bot_name: String, _message: String) -> Vec<ClaudeChatMessage> {
-        vec![]
-    }
-
-    fn make_user_message(&self, message_content: String) -> ClaudeChatMessage {
-        ClaudeChatMessage {
-            role: "user".to_string(),
-            content: message_content,
-        }
-    }
-
-    fn convert_response_to_message(&self, response: Self::ChatResponse) -> Self::ChatMessage {
-        let content = response
-            .content
-            .first()
-            .map(|r| r.text.clone())
-            .unwrap_or_default();
-
-        ClaudeChatMessage {
-            role: "assistant".to_string(),
-            content,
         }
     }
 
     async fn prompt_chat(
         &self,
         params: BrainParameters,
-        messages: Vec<Self::ChatMessage>,
-    ) -> anyhow::Result<Self::ChatResponse> {
+        messages: Vec<ChatMessage>,
+    ) -> anyhow::Result<ChatResponse> {
         let request = ClaudeRequest {
             model: params.model,
             max_tokens: params.max_tokens,
-            messages,
-            system: format!("{}: {}", DEFAULT_SYSTEM_PROMPT, params.system_message),
+            messages: messages
+                .iter()
+                .map(|m| ClaudeChatMessage {
+                    role: match m.role {
+                        Role::User => "user".to_string(),
+                        Role::Assistant => "assistant".to_string(),
+                    },
+                    content: m.content.clone(),
+                })
+                .collect(),
+            system: format!("{}\n<{}>", DEFAULT_SYSTEM_PROMPT, params.system_prompt),
         };
 
         let response = self
             .http_client()
             .post("https://api.anthropic.com/v1/messages")
-            .header("x-api-key", self.api_key())
+            .header("x-api-key", self.api_key(params.debug))
             .header("content-type", "application/json")
             .header("anthropic-version", "2023-06-01")
             .json(&request)
             .send()
             .await?;
 
-        let mut response: Self::ChatResponse = response.json().await?;
+        let mut response: ClaudeChatResponse = response.json().await?;
 
         if params.strip_italic_actions {
             response.content.iter_mut().for_each(|reply| {
@@ -116,6 +100,15 @@ impl Brain for ClaudeBrain {
             }
         });
 
-        Ok(response)
+        Ok(ChatResponse {
+            message: ChatMessage {
+                role: Role::Assistant,
+                content: response
+                    .content
+                    .first()
+                    .map(|r| r.text.clone())
+                    .unwrap_or_default(),
+            },
+        })
     }
 }

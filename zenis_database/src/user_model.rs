@@ -13,7 +13,7 @@ pub struct UserSettings {
 pub struct UserModel {
     #[serde(rename = "_id")]
     pub id: ObjectId,
-    pub user_id: String,
+    pub user_id: u64,
     pub credits: i64,
     pub settings: UserSettings,
 }
@@ -22,7 +22,7 @@ impl UserModel {
     pub fn new(user_id: Id<UserMarker>) -> Self {
         Self {
             id: ObjectId::new(),
-            user_id: user_id.get().to_string(),
+            user_id: user_id.get(),
             credits: 0,
             settings: UserSettings {
                 is_notifications_enabled: true,

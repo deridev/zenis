@@ -6,22 +6,29 @@ use std::{net::SocketAddr, sync::Arc, time::Duration};
 use chrono::Utc;
 pub use event_handler::EventHandler;
 
-use rand::{rngs::StdRng, Rng, SeedableRng};
 use warp::{reply::Response, Filter};
-use zenis_ai::CreditsPaymentMethod;
+use zenis_ai::{
+    common::{ChatMessage, Role},
+    util::process_instance_message_queue,
+    BrainType,
+};
 use zenis_common::{config, Color};
 use zenis_data::products::PRODUCTS;
-use zenis_database::{DatabaseState, ZenisDatabase};
+use zenis_database::{
+    instance_model::{CreditsPaymentMethod, InstanceModel},
+    DatabaseState, ZenisDatabase,
+};
 use zenis_discord::{
     twilight_gateway::{
         stream::{self, ShardEventStream},
         Config, Intents,
     },
+    twilight_model::id::Id,
     DiscordHttpClient, EmbedBuilder,
 };
 
 use tokio_stream::StreamExt;
-use zenis_framework::{watcher::Watcher, ZenisAgent, ZenisClient};
+use zenis_framework::{watcher::Watcher, ZenisClient};
 use zenis_payment::mp::{
     client::{CreditDestination, MercadoPagoClient, TransactionId},
     notification::NotificationPayload,
@@ -162,25 +169,31 @@ async fn main() {
         let db = database.clone();
         tokio::spawn(async move {
             loop {
-                tokio::time::sleep(Duration::from_secs(10)).await;
+                tokio::time::sleep(Duration::from_secs(8)).await;
 
                 let http = client.http.clone();
-                for agent in client.agents.read().await.values().flatten() {
-                    process_agent(http.clone(), agent.clone(), db.clone())
+                let instances = db.instances().all_actives().await.unwrap_or_default();
+                for instance in instances {
+                    process_instance(http.clone(), db.clone(), instance.clone())
                         .await
                         .ok();
 
-                    let last_message_timestamp =
-                        agent.1.read().await.last_received_message_timestamp;
+                    let last_message_timestamp = instance.last_received_message_timestamp;
                     let now = chrono::Utc::now();
 
                     const MINUTES_TOLERANCE: i64 = 8;
                     if (now.timestamp() - last_message_timestamp) > 60 * MINUTES_TOLERANCE {
-                        agent.1.write().await.exit_reason = Some("Inatividade".to_string());
+                        let Ok(Some(mut instance)) = db.instances().get_by_id(instance.id).await
+                        else {
+                            continue;
+                        };
+
+                        instance.exit_reason = Some("Inatividade".to_string());
+                        db.instances().save(instance).await.ok();
                     }
                 }
 
-                client.delete_inactive_agents().await.unwrap();
+                client.delete_off_instances(db.clone()).await.ok();
             }
         });
     }
@@ -203,80 +216,101 @@ async fn main() {
     }
 }
 
-async fn process_agent(
+async fn process_instance(
     http: Arc<DiscordHttpClient>,
-    zenis_agent: ZenisAgent,
     database: Arc<ZenisDatabase>,
+    mut instance: InstanceModel,
 ) -> anyhow::Result<()> {
-    let mut agent = zenis_agent.1.write().await;
-    if agent.message_queue.is_empty() || agent.awaiting_message {
+    if instance.history.is_empty() || instance.is_awaiting_new_messages {
+        println!("____________________>>> Agent is idle.");
         return Ok(());
     }
 
-    let diff = Utc::now().timestamp() - agent.last_sent_message_timestamp;
+    let diff = Utc::now().timestamp() - instance.last_sent_message_timestamp;
     if diff < 7 {
         println!("It will generate a message in seconds");
         return Ok(());
     }
 
-    agent.awaiting_message = true;
+    instance.is_awaiting_new_messages = true;
 
-    let response = agent.process_message_queue().await?;
-    agent.last_sent_message_timestamp = Utc::now().timestamp();
+    let messages = instance
+        .history
+        .iter()
+        .map(|m| ChatMessage {
+            role: if m.is_user {
+                Role::User
+            } else {
+                Role::Assistant
+            },
+            content: m.content.clone(),
+        })
+        .collect();
 
-    let Some(response_content) = response.content.first().cloned() else {
+    let Ok(response) =
+        process_instance_message_queue(&mut instance, BrainType::Cohere, messages).await
+    else {
+        instance.exit_reason = Some("Erro interno".to_string());
+        database.instances().save(instance).await?;
         return Ok(());
     };
 
-    if response_content.text.is_empty() || response_content.text.contains("<AWAIT>") {
+    let response_content = response.message.content.clone();
+
+    if response_content.is_empty() || response_content.contains("<AWAIT>") {
+        println!(
+            "____________________>>> Agent <AWAIT>'ed. ({})",
+            response_content
+        );
         return Ok(());
     }
 
-    if response_content.text.contains("<EXIT>") {
-        agent.exit_reason = Some("O agente saiu por conta própria".to_string());
+    if response_content.contains("<EXIT>") {
+        println!("____________________>>> Agent exited.");
+        instance.exit_reason = Some("O agente saiu por conta própria".to_string());
+        database.instances().save(instance).await?;
         return Ok(());
     }
 
-    let (webhook_id, token) = (agent.webhook_id, agent.webhook_token.clone());
-    http.execute_webhook(webhook_id, &token)
-        .content(&response_content.text)?
-        .await?;
-    agent.last_sent_message_timestamp =
-        Utc::now().timestamp() + StdRng::from_entropy().gen_range(1..6);
+    let (webhook_id, token) = (instance.webhook_id, instance.webhook_token.clone());
 
-    drop(agent);
-    process_agent_credits_payment(zenis_agent, database).await?;
+    println!("____________________>>> Sending webhook message.");
+    http.execute_webhook(Id::new(webhook_id), &token)
+        .content(&response_content)?
+        .await
+        .ok();
+
+    process_instance_credits_payment(&mut instance, database.clone()).await?;
+    database.instances().save(instance).await?;
 
     Ok(())
 }
 
-async fn process_agent_credits_payment(
-    agent: ZenisAgent,
+async fn process_instance_credits_payment(
+    instance: &mut InstanceModel,
     database: Arc<ZenisDatabase>,
 ) -> anyhow::Result<()> {
-    let mut agent = agent.1.write().await;
-    let payment_method = agent.agent_payment_method;
-
-    let price_per_reply = agent.agent_pricing.price_per_reply;
+    let payment_method = instance.payment_method;
+    let price_per_reply = instance.pricing.price_per_reply;
 
     match payment_method {
         CreditsPaymentMethod::UserCredits(user_id) => {
-            let mut user_data = database.users().get_by_user(user_id).await?;
+            let mut user_data = database.users().get_by_user(Id::new(user_id)).await?;
             user_data.remove_credits(price_per_reply);
 
             if user_data.credits <= 0 {
-                agent.exit_reason =
+                instance.exit_reason =
                     Some("O usuário não tem mais créditos para pagar o agente".to_string());
             }
 
             database.users().save(user_data).await?;
         }
         CreditsPaymentMethod::GuildPublicCredits(guild_id) => {
-            let mut guild_data = database.guilds().get_by_guild(guild_id).await?;
+            let mut guild_data = database.guilds().get_by_guild(Id::new(guild_id)).await?;
             guild_data.remove_public_credits(price_per_reply);
 
             if guild_data.public_credits <= 0 {
-                agent.exit_reason = Some(
+                instance.exit_reason = Some(
                     "O servidor não tem mais créditos públicos para pagar o agente".to_string(),
                 );
             }
@@ -328,7 +362,7 @@ pub async fn process_mp_notification(
             let embed = EmbedBuilder::new_common()
                 .set_color(Color::YELLOW)
                 .set_description("## ⏳ Pagamento pendente! Mantenha sua DM aberta para receber notificações sobre o status do pagamento.")
-                .add_footer_text("Algum problema? Contate o suporte do ZenisAI no servidor oficial (/servidor)!");
+                .add_footer_text("Algum problema? Contate o suporte do ZenisAI no servidor oficial (/servidoroficial)!");
             client
                 .http
                 .create_message(dm_channel.id)
@@ -342,7 +376,7 @@ pub async fn process_mp_notification(
             let embed = EmbedBuilder::new_common()
                 .set_color(Color::RED)
                 .set_description("## ❌ Pagamento recusado!\n\nO pagamento foi recusado ou cancelado. Tente novamente mais tarde.")
-                .add_footer_text("Algum problema? Contate o suporte do ZenisAI no servidor oficial (/servidor)!");
+                .add_footer_text("Algum problema? Contate o suporte do ZenisAI no servidor oficial (/servidoroficial)!");
 
             client
                 .http
@@ -367,7 +401,7 @@ pub async fn process_mp_notification(
     let mut embed = EmbedBuilder::new_common()
         .set_color(Color::GREEN)
         .set_description(format!("## ✅ Pagamento aprovado!\n\nVocê efetuou a compra do produto **{}** no valor de **R$ {:.2?}**.\nAproveite ZenisAI!", product.name, product.price))
-        .add_footer_text("Algum problema? Contate o suporte do ZenisAI no servidor oficial (/servidor)!");
+        .add_footer_text("Algum problema? Contate o suporte do ZenisAI no servidor oficial (/servidoroficial)!");
 
     match transaction.credit_destination {
         CreditDestination::User(user_id) => {
@@ -400,6 +434,8 @@ pub async fn process_mp_notification(
     }
 
     let dm_channel = get_dm_channel!();
+
+    // im tired of deadlocks. Let's use channels. Communicate by passing messages, right?
 
     client
         .http

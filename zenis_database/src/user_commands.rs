@@ -9,7 +9,7 @@ use zenis_discord::twilight_model::id::{marker::UserMarker, Id};
 use crate::{common::query_by_id, user_model::UserModel, ZenisDatabase};
 
 static CACHE_ID: Lazy<Cache<ObjectId, UserModel>> = Lazy::new(|| Cache::new(1000));
-static CACHE_USER_ID: Lazy<Cache<String, UserModel>> = Lazy::new(|| Cache::new(1000));
+static CACHE_USER_ID: Lazy<Cache<u64, UserModel>> = Lazy::new(|| Cache::new(1000));
 
 #[allow(unused)]
 pub struct UserCommands {
@@ -62,10 +62,10 @@ impl UserCommands {
 
     pub async fn get_by_user(&self, user_id: Id<UserMarker>) -> anyhow::Result<UserModel> {
         let query = doc! {
-            "user_id": user_id.get().to_string(),
+            "user_id": user_id.get() as i64,
         };
 
-        match self.get(&CACHE_USER_ID, user_id.to_string(), query).await? {
+        match self.get(&CACHE_USER_ID, user_id.get(), query).await? {
             Some(user_data) => Ok(user_data),
             None => Ok(self.create_user_data(user_id).await?),
         }

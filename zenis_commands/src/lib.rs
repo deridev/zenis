@@ -22,11 +22,15 @@ macro_rules! register_command {
 
 mod buy;
 mod common;
+mod configure_agent;
+mod create_agent;
 mod guild;
 mod invoke;
+mod my_agents;
+mod officialguild;
 mod wallet;
 
-mod owner;
+mod adm;
 
 pub type CommandMap = HashMap<String, BoxedCommand>;
 
@@ -38,8 +42,12 @@ pub static COMMANDS: Lazy<CommandMap> = Lazy::new(|| {
     register_command!(map, wallet::WalletCommand);
     register_command!(map, guild::GuildCommand);
     register_command!(map, buy::BuyCommand);
+    register_command!(map, my_agents::My_agentsCommand);
+    register_command!(map, create_agent::Create_agentCommand);
+    register_command!(map, configure_agent::Configure_agentCommand);
+    register_command!(map, officialguild::OfficialguildCommand);
 
-    register_command!(map, owner::OwnerCommand);
+    register_command!(map, adm::AdmCommand);
 
     map
 });
