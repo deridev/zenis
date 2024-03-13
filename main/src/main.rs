@@ -103,11 +103,6 @@ async fn main() {
                         Arc<ZenisClient>,
                         Arc<ZenisDatabase>,
                     )| async move {
-                        println!(
-                            "Received notification with TRANSACTION ID {transaction_id}:\n{:?}",
-                            payload
-                        );
-
                         if payload.get("action").is_some() {
                             let notification_payload = match serde_json::from_value::<
                                 NotificationPayload,
@@ -145,8 +140,6 @@ async fn main() {
                                     .await
                                     .ok();
                             }
-                        } else {
-                            println!("Received notification is not a payment notification");
                         }
 
                         Ok(WarpResponse::builder()
@@ -222,13 +215,11 @@ async fn process_instance(
     mut instance: InstanceModel,
 ) -> anyhow::Result<()> {
     if instance.history.is_empty() || instance.is_awaiting_new_messages {
-        println!("____________________>>> Agent is idle.");
         return Ok(());
     }
 
     let diff = Utc::now().timestamp() - instance.last_sent_message_timestamp;
     if diff < 7 {
-        println!("It will generate a message in seconds");
         return Ok(());
     }
 
@@ -258,15 +249,10 @@ async fn process_instance(
     let response_content = response.message.content.clone();
 
     if response_content.is_empty() || response_content.contains("<AWAIT>") {
-        println!(
-            "____________________>>> Agent <AWAIT>'ed. ({})",
-            response_content
-        );
         return Ok(());
     }
 
     if response_content.contains("<EXIT>") {
-        println!("____________________>>> Agent exited.");
         instance.exit_reason = Some("O agente saiu por conta própria".to_string());
         database.instances().save(instance).await?;
         return Ok(());
@@ -274,7 +260,6 @@ async fn process_instance(
 
     let (webhook_id, token) = (instance.webhook_id, instance.webhook_token.clone());
 
-    println!("____________________>>> Sending webhook message.");
     http.execute_webhook(Id::new(webhook_id), &token)
         .content(&response_content)?
         .await

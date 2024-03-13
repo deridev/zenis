@@ -108,6 +108,33 @@ impl AgentCommands {
             .await?)
     }
 
+    pub async fn get_all_private_by_guild(&self, guild_id: u64) -> anyhow::Result<Vec<AgentModel>> {
+        let query = doc! {
+            "public": false,
+            "guild_id": guild_id as i64,
+        };
+
+        Ok(self
+            .collection
+            .find(query, None)
+            .await?
+            .collect::<Result<Vec<_>, _>>()
+            .await?)
+    }
+
+    pub async fn get_all_public(&self) -> anyhow::Result<Vec<AgentModel>> {
+        let query = doc! {
+            "public": true,
+        };
+
+        Ok(self
+            .collection
+            .find(query, None)
+            .await?
+            .collect::<Result<Vec<_>, _>>()
+            .await?)
+    }
+
     pub async fn create_agent(&self, agent_model: AgentModel) -> anyhow::Result<()> {
         if self
             .get_by_identifier(&agent_model.identifier)

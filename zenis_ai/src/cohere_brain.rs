@@ -79,8 +79,6 @@ impl Brain for CohereBrain {
             frequency_penalty: 0.15,
         };
 
-        println!("{:#?}\n\n", request);
-
         let response = self
             .http_client()
             .post("https://api.cohere.ai/v1/chat")

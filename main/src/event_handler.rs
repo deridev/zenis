@@ -92,8 +92,6 @@ impl EventHandler {
             .get_all_by_channel(channel.id.get())
             .await?;
 
-        println!("> Received message from {}", author.name);
-
         for instance in instances.iter_mut() {
             if instance.agent_name == author.display_name() && author.bot {
                 continue;

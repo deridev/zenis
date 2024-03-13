@@ -24,6 +24,7 @@ mod buy;
 mod common;
 mod configure_agent;
 mod create_agent;
+mod explore;
 mod guild;
 mod invoke;
 mod my_agents;
@@ -42,6 +43,7 @@ pub static COMMANDS: Lazy<CommandMap> = Lazy::new(|| {
     register_command!(map, wallet::WalletCommand);
     register_command!(map, guild::GuildCommand);
     register_command!(map, buy::BuyCommand);
+    register_command!(map, explore::ExploreCommand);
     register_command!(map, my_agents::My_agentsCommand);
     register_command!(map, create_agent::Create_agentCommand);
     register_command!(map, configure_agent::Configure_agentCommand);
