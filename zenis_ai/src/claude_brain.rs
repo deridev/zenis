@@ -93,10 +93,10 @@ impl Brain for ClaudeBrain {
 
         response.content.iter_mut().for_each(|reply| {
             let content = reply.text.to_uppercase().trim().to_owned();
-            if content.contains("<AWAIT>") {
-                reply.text = "<AWAIT>".to_string();
-            } else if content.contains("<EXIT>") {
-                reply.text = "<EXIT>".to_string();
+            if content.contains("{AWAIT}") {
+                reply.text = "{AWAIT}".to_string();
+            } else if content.contains("{EXIT}") {
+                reply.text = "{EXIT}".to_string();
             }
         });
 

@@ -99,10 +99,14 @@ impl Brain for CohereBrain {
         }
 
         let content = response.text.to_uppercase().trim().to_owned();
-        if content.contains("<AWAIT>") {
-            response.text = "<AWAIT>".to_string();
-        } else if content.contains("<EXIT>") {
-            response.text = "<EXIT>".to_string();
+        if content.contains("{AWAIT}") {
+            response.text = "{AWAIT}".to_string();
+        } else if content.contains("{EXIT}") {
+            response.text = "{EXIT}".to_string();
+        }
+
+        if content.contains('<') && content.contains('>') && content.contains('@') {
+            response.text = remove_after_lt(&response.text).trim().to_string();
         }
 
         Ok(ChatResponse {
@@ -111,5 +115,13 @@ impl Brain for CohereBrain {
                 content: response.text,
             },
         })
+    }
+}
+
+fn remove_after_lt(input: &str) -> &str {
+    if let Some(index) = input.find('<') {
+        &input[..index]
+    } else {
+        input
     }
 }

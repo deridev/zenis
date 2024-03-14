@@ -250,11 +250,11 @@ async fn process_instance(
 
     let response_content = response.message.content.clone();
 
-    if response_content.is_empty() || response_content.contains("<AWAIT>") {
+    if response_content.is_empty() || response_content.contains("{AWAIT}") {
         return Ok(());
     }
 
-    if response_content.contains("<EXIT>") {
+    if response_content.contains("{EXIT}") {
         instance.exit_reason = Some("O agente saiu por conta própria".to_string());
         database.instances().save(instance).await?;
         return Ok(());
