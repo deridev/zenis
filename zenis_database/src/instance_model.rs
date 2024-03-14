@@ -77,16 +77,18 @@ impl InstanceModel {
         let instance_message: InstanceMessage = message.into();
 
         if let Some(last_message) = self.history.last_mut() {
-            if last_message.is_user {
+            if last_message.is_user && last_message.content.len() < 600 {
                 last_message
                     .content
                     .push_str(&format!("\n{}", instance_message.content));
+            } else {
+                self.history.push(instance_message);
             }
         } else {
             self.history.push(instance_message);
         }
 
-        if self.history.len() > 15 {
+        if self.history.len() > 7 {
             self.history.remove(0);
         }
 

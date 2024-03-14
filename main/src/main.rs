@@ -164,7 +164,7 @@ async fn main() {
         let db = database.clone();
         tokio::spawn(async move {
             loop {
-                tokio::time::sleep(Duration::from_secs(8)).await;
+                tokio::time::sleep(Duration::from_secs(10)).await;
 
                 let http = client.http.clone();
                 let instances = db.instances().all_actives().await.unwrap_or_default();
@@ -221,7 +221,7 @@ async fn process_instance(
     }
 
     let diff = Utc::now().timestamp() - instance.last_sent_message_timestamp;
-    if diff < 7 {
+    if diff < 8 {
         return Ok(());
     }
 
@@ -315,10 +315,7 @@ pub async fn process_mp_notification(
     client: Arc<ZenisClient>,
     database: Arc<ZenisDatabase>,
 ) -> anyhow::Result<()> {
-    println!("[NOTIFICATION]\n{:?}", payload);
-
     let Ok(transaction_id) = ObjectId::from_str(&transaction_id) else {
-        println!("Invalid transaction ID");
         client
             .emit_error_hook(
                 "Invalid transaction ID".to_string(),
@@ -329,7 +326,6 @@ pub async fn process_mp_notification(
     };
 
     let Some(transaction) = database.transactions().get_by_id(transaction_id).await? else {
-        println!("Transaction not found with ID: {}", transaction_id);
         client
             .emit_error_hook(
                 format!("Transaction not found with ID: {}", transaction_id),
@@ -344,10 +340,6 @@ pub async fn process_mp_notification(
     let payment = match client.mp_client.get_payment(payload.data.id.clone()).await {
         Ok(payment) => payment,
         Err(e) => {
-            eprintln!(
-                "[NOTIFICATION ERROR]\nMP payment not found with ID: {}\nError: {:?}",
-                payload.data.id, e
-            );
             client
                 .emit_error_hook(
                     format!("MP payment not found with ID: {}", payload.data.id),
@@ -357,8 +349,6 @@ pub async fn process_mp_notification(
             return Ok(());
         }
     };
-
-    println!("[PAYMENT]\n{:?}", payment);
 
     macro_rules! get_dm_channel {
         () => {{
