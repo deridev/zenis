@@ -241,7 +241,7 @@ async fn process_instance(
         .collect();
 
     let Ok(response) =
-        process_instance_message_queue(&mut instance, BrainType::Cohere, messages).await
+        process_instance_message_queue(&mut instance, BrainType::Cohere, messages, config::DEBUG).await
     else {
         instance.exit_reason = Some("Erro interno".to_string());
         database.instances().save(instance).await?;

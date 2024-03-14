@@ -17,9 +17,11 @@ pub async fn process_instance_message_queue(
     instance: &mut InstanceModel,
     brain_type: BrainType,
     messages: Vec<ChatMessage>,
+    debug: bool,
 ) -> anyhow::Result<ChatResponse> {
     let brain = brain_type.get();
     let mut parameters = brain.default_parameters();
+    parameters.debug = debug;
     parameters.system_prompt = instance.agent_description.clone();
 
     let response = brain.prompt_chat(parameters, messages.clone()).await?;

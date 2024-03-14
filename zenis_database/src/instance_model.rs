@@ -89,6 +89,8 @@ impl InstanceModel {
         if self.history.len() > 15 {
             self.history.remove(0);
         }
+
+        self.last_received_message_timestamp = Utc::now().timestamp();
     }
 
     pub fn introduce(&mut self, introduction_message: impl ToString) -> InstanceMessage {
