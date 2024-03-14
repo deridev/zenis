@@ -218,9 +218,9 @@ pub async fn invoke(mut ctx: CommandContext) -> anyhow::Result<()> {
         embed = embed.set_thumbnail(image_url);
     }
 
-    ctx.send(embed).await?;
+    let message = ctx.send(embed).await?;
 
-    ctx.client
+    let result = ctx.client
         .create_agent_instance(
             ctx.db(),
             channel.id,
@@ -228,7 +228,18 @@ pub async fn invoke(mut ctx: CommandContext) -> anyhow::Result<()> {
             agent.pricing,
             payment_method,
         )
+        .await;
+
+    if result.is_err() {
+        ctx.send(
+            Response::new_user_reply(&author, "algo deu errado ao invocar o agente!\nVerifique se o agente tem um link de imagem PNG válido. Se não for isso, talvez eu não tenha permissão de criar webhooks aqui.\nSe o erro persistir, entre em **/servidoroficial** e busque suporte!")
+                .add_emoji_prefix(emojis::ERROR),
+        )
         .await?;
+        return Ok(());
+    }
+
+    ctx.client.http.delete_message(message.channel_id, message.id).await?;
 
     Ok(())
 }
