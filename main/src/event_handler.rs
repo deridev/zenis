@@ -1,5 +1,6 @@
 use std::sync::{atomic::Ordering, Arc};
 
+use rand::{rngs::StdRng, Rng, SeedableRng};
 use zenis_common::{config, Probability};
 use zenis_database::{
     guild_model::GuildFlag, instance_model::InstanceMessage, user_model::UserFlags, ZenisDatabase,
@@ -117,8 +118,12 @@ impl EventHandler {
             });
             instance.is_awaiting_new_messages = false;
 
-            if author.bot && Probability::new(40).generate_random_bool() {
-                instance.is_awaiting_new_messages = true;
+            if author.bot {
+                instance.last_sent_message_timestamp += StdRng::from_entropy().gen_range(3..=7);
+
+                if Probability::new(30).generate_random_bool() {
+                    instance.is_awaiting_new_messages = true;
+                }
             }
 
             self.database.instances().save(instance.clone()).await?;

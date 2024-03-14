@@ -56,6 +56,7 @@ async fn load_image_from_url(url: &str) -> anyhow::Result<String> {
 
     Ok(data_uri)
 }
+
 #[derive(Debug)]
 pub struct ZenisClient {
     pub http: Arc<DiscordHttpClient>,
