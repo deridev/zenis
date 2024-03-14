@@ -131,10 +131,15 @@ impl ZenisClient {
         &self,
         db: Arc<ZenisDatabase>,
         channel_id: Id<ChannelMarker>,
-        mut agent_model: AgentModel,
+        agent_model: AgentModel,
         pricing: AgentPricing,
         payment_method: CreditsPaymentMethod,
     ) -> anyhow::Result<()> {
+        let mut agent_model = db
+            .agents()
+            .get_by_identifier(&agent_model.identifier)
+            .await?
+            .context("Expected an agent with this identifier")?;
         let image = match &agent_model.agent_url_image {
             Some(url) => load_image_from_url(url).await.ok(),
             None => None,
@@ -247,8 +252,9 @@ impl ZenisClient {
                 ).with_tags(TAGS).with_url_image("https://pbs.twimg.com/profile_images/1601274831948881920/VU_bwlhp_400x400.jpg"),
             ];
 
-            for agent in agents {
+            for mut agent in agents {
                 println!("> Created agent {}", agent.identifier);
+                agent.public = true;
                 db.agents().create_agent(agent).await.unwrap();
             }
         }

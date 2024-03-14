@@ -22,7 +22,7 @@ pub struct TransactionModel {
     pub discord_user_id: u64,
     pub product_id: String,
     pub credit_destination: CreditDestination,
-    pub expires_at_timestamp: i64
+    pub expires_at_timestamp: i64,
 }
 
 impl TransactionModel {
@@ -36,7 +36,8 @@ impl TransactionModel {
             discord_user_id,
             product_id: product_id.to_string(),
             credit_destination,
-            expires_at_timestamp: (chrono::Utc::now() + chrono::Duration::try_hours(8).unwrap()).timestamp()
+            expires_at_timestamp: (chrono::Utc::now() + chrono::Duration::try_hours(8).unwrap())
+                .timestamp(),
         }
     }
 }
@@ -99,8 +100,7 @@ impl TransactionCommands {
 
     pub async fn delete_expired_transactions(&self) -> anyhow::Result<()> {
         let now = chrono::Utc::now().timestamp();
-        self
-            .collection
+        self.collection
             .delete_many(doc! { "expires_at": { "$lt": now } }, None)
             .await?;
 

@@ -273,7 +273,8 @@ pub async fn configure_agent(
 
         if ctx.client.load_url_image(image.to_owned()).await.is_none() {
             ctx.send(
-                Response::new_user_reply(&author, "URL de imagem inválida!").add_emoji_prefix(emojis::ERROR),
+                Response::new_user_reply(&author, "URL de imagem inválida!")
+                    .add_emoji_prefix(emojis::ERROR),
             )
             .await?;
             return Ok(());

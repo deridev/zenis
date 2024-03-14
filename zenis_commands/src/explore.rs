@@ -6,7 +6,7 @@ use zenis_framework::{util::make_multiple_rows, watcher::WatcherOptions};
 
 use crate::prelude::*;
 
-const AGENTS_PER_PAGE: usize = 3;
+const AGENTS_PER_PAGE: usize = 4;
 
 #[command("Veja todos os agentes que você pode invocar!")]
 #[name("explorar")]
@@ -101,7 +101,7 @@ pub async fn explore(mut ctx: CommandContext) -> anyhow::Result<()> {
 async fn generate_pagination(
     ctx: &mut CommandContext,
     author: &User,
-    agents: Vec<AgentModel>,
+    mut agents: Vec<AgentModel>,
 ) -> anyhow::Result<()> {
     if agents.is_empty() {
         ctx.reply(
@@ -114,6 +114,9 @@ async fn generate_pagination(
         .await?;
         return Ok(());
     }
+
+    agents.sort_unstable_by_key(|agent| agent.stats.invocations);
+    agents.retain(|agent| !agent.tags.contains("special"));
 
     let mut pages = vec![];
     for i in (0..agents.len()).step_by(AGENTS_PER_PAGE) {

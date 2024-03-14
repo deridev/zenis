@@ -62,7 +62,10 @@ impl InstanceCommands {
         Ok(())
     }
 
-    pub async fn all_actives_in_channel(&self, channel_id: u64) -> anyhow::Result<Vec<InstanceModel>> {
+    pub async fn all_actives_in_channel(
+        &self,
+        channel_id: u64,
+    ) -> anyhow::Result<Vec<InstanceModel>> {
         let query = doc! {
             "channel_id": channel_id as i64,
             "active": true,

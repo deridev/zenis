@@ -253,6 +253,15 @@ async fn process_instance(
         return Ok(());
     };
 
+    if let Ok(Some(mut agent)) = database
+        .agents()
+        .get_by_identifier(&instance.agent_identifier)
+        .await
+    {
+        agent.stats.replies += 1;
+        database.agents().save(agent).await.ok();
+    }
+
     let response_content = response.message.content.clone();
 
     if response_content.is_empty() || response_content.contains("{AWAIT}") {

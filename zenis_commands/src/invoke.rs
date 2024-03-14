@@ -147,10 +147,16 @@ pub async fn invoke(mut ctx: CommandContext) -> anyhow::Result<()> {
         return Ok(());
     };
 
-    if !agent.public && agent.creator_user_id != author.id.get() && agent.guild_id != channel.guild_id.map(|g| g.get()) {
+    if !agent.public
+        && agent.creator_user_id != author.id.get()
+        && agent.guild_id != channel.guild_id.map(|g| g.get())
+    {
         ctx.send(
-            Response::new_user_reply(&author, "você não tem permissão para invocar este agente privado!")
-                .add_emoji_prefix(emojis::ERROR),
+            Response::new_user_reply(
+                &author,
+                "você não tem permissão para invocar este agente privado!",
+            )
+            .add_emoji_prefix(emojis::ERROR),
         )
         .await?;
         return Ok(());
@@ -259,7 +265,13 @@ pub async fn invoke(mut ctx: CommandContext) -> anyhow::Result<()> {
             .delete_message(message.channel_id, message.id)
             .await?;
 
-        ctx.client.emit_error_hook(format!("Invocation failed. Agent ID: {}", agent.identifier), e).await.ok();
+        ctx.client
+            .emit_error_hook(
+                format!("Invocation failed. Agent ID: {}", agent.identifier),
+                e,
+            )
+            .await
+            .ok();
 
         ctx.send(
             Response::new_user_reply(&author, "**algo deu errado ao invocar o agente!**\nVerifique se o agente tem um link de imagem PNG válido. Se não for isso, talvez eu não tenha permissão de criar webhooks aqui.\nSe o erro persistir, entre em **/servidoroficial** e busque suporte!")

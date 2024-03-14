@@ -262,7 +262,10 @@ pub async fn adm(
 
             ctx.reply(Response::new_user_reply(
                 &author,
-                format!("**{}** instâncias foram desligadas com sucesso no canal **{}**.", counter, id),
+                format!(
+                    "**{}** instâncias foram desligadas com sucesso no canal **{}**.",
+                    counter, id
+                ),
             ))
             .await?;
         }
