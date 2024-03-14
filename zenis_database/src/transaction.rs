@@ -1,6 +1,6 @@
 use std::hash::Hash;
 
-use bson::{oid::ObjectId, Document};
+use bson::{doc, oid::ObjectId, Document};
 use mongodb::Collection;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
@@ -22,6 +22,7 @@ pub struct TransactionModel {
     pub discord_user_id: u64,
     pub product_id: String,
     pub credit_destination: CreditDestination,
+    pub expires_at_timestamp: i64
 }
 
 impl TransactionModel {
@@ -35,6 +36,7 @@ impl TransactionModel {
             discord_user_id,
             product_id: product_id.to_string(),
             credit_destination,
+            expires_at_timestamp: (chrono::Utc::now() + chrono::Duration::try_hours(8).unwrap()).timestamp()
         }
     }
 }
@@ -91,6 +93,16 @@ impl TransactionCommands {
 
     pub async fn create_transaction(&self, transaction: TransactionModel) -> anyhow::Result<()> {
         self.collection.insert_one(transaction, None).await?;
+
+        Ok(())
+    }
+
+    pub async fn delete_expired_transactions(&self) -> anyhow::Result<()> {
+        let now = chrono::Utc::now().timestamp();
+        self
+            .collection
+            .delete_many(doc! { "expires_at": { "$lt": now } }, None)
+            .await?;
 
         Ok(())
     }

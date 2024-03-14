@@ -192,6 +192,7 @@ async fn main() {
                 }
 
                 client.delete_off_instances(db.clone()).await.ok();
+                db.transactions().delete_expired_transactions().await.ok();
             }
         });
     }

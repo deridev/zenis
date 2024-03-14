@@ -117,7 +117,7 @@ impl EventHandler {
             });
             instance.is_awaiting_new_messages = false;
 
-            if author.bot && Probability::new(20).generate_random_bool() {
+            if author.bot && Probability::new(40).generate_random_bool() {
                 instance.is_awaiting_new_messages = true;
             }
 
