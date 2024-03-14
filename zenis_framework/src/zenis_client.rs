@@ -352,9 +352,9 @@ impl ZenisClient {
         let hook_id = std::env::var("GUILD_HOOK_ID")?.parse::<u64>()?;
         let hook_token = std::env::var("GUILD_HOOK_TOKEN")?;
 
-        let guild = self.http.guild(guild_create.id).await?.model().await?;
+        let guild = self.http.guild(guild_create.id).with_counts(true).await?.model().await?;
         let member_count = guild
-            .member_count
+            .approximate_member_count
             .map(|m| m.to_string())
             .unwrap_or(String::from("?"));
 
@@ -367,7 +367,6 @@ impl ZenisClient {
             })
             .add_inlined_field("📄 Nome", format!("**{}**", guild.name))
             .add_inlined_field("👥 Membros", format!("**{}**", member_count))
-            .add_inlined_field("📢 Canais", guild.channels.len())
             .add_footer_text(format!(
                 "ID do servidor: {}\nID do dono: {}",
                 guild.id, guild.owner_id

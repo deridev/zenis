@@ -127,7 +127,6 @@ impl EventHandler {
 
     pub async fn guild_create(self, guild_create: Box<GuildCreate>) -> anyhow::Result<()> {
         let mut guild_data = self.database.guilds().get_by_guild(guild_create.id).await?;
-        let member_count = guild_create.member_count.unwrap_or(0);
 
         let mut owner_data = self
             .database
@@ -135,8 +134,7 @@ impl EventHandler {
             .get_by_user(guild_create.owner_id)
             .await?;
 
-        if member_count > 3
-            && guild_data.public_credits == 0
+        if guild_data.public_credits == 0
             && !owner_data.has_flag(UserFlags::AlreadyReceivedFreeGuildCredits)
         {
             owner_data.insert_flag(UserFlags::AlreadyReceivedFreeGuildCredits);
