@@ -119,7 +119,7 @@ impl EventHandler {
             instance.is_awaiting_new_messages = false;
 
             if author.bot {
-                instance.last_sent_message_timestamp += StdRng::from_entropy().gen_range(3..=7);
+                instance.last_sent_message_timestamp += StdRng::from_entropy().gen_range(5..=9);
 
                 if Probability::new(30).generate_random_bool() {
                     instance.is_awaiting_new_messages = true;
@@ -145,7 +145,7 @@ impl EventHandler {
             && !owner_data.has_flag(UserFlags::AlreadyReceivedFreeGuildCredits)
         {
             owner_data.insert_flag(UserFlags::AlreadyReceivedFreeGuildCredits);
-            guild_data.add_public_credits(250);
+            guild_data.add_public_credits(50);
             self.database.guilds().save(guild_data).await?;
             self.database.users().save(owner_data).await?;
         }
