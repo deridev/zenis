@@ -142,6 +142,7 @@ impl EventHandler {
             owner_data.insert_flag(UserFlags::AlreadyReceivedFreeGuildCredits);
             guild_data.add_public_credits(250);
             self.database.guilds().save(guild_data).await?;
+            self.database.users().save(owner_data).await?;
         }
 
         self.client.emit_guild_create_hook(guild_create).await?;
