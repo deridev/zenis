@@ -100,10 +100,12 @@ pub async fn buy(mut ctx: CommandContext) -> anyhow::Result<()> {
     }
 
     // TODO: almost there 🙋
-    let (_, checkout_url) = ctx
+    let (transaction, checkout_url) = ctx
         .client
         .create_transaction(author.id, product, destination)
         .await?;
+
+    ctx.db().transactions().save(transaction).await?;
 
     let payment_embed = EmbedBuilder::new_common()
         .set_color(Color::CYAN_GREEN)
