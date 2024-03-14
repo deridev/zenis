@@ -34,7 +34,7 @@ pub async fn invoke(mut ctx: CommandContext) -> anyhow::Result<()> {
         .get_all_by_channel(channel.id.get())
         .await?
         .len()
-        > 2
+        > 1
     {
         ctx.reply(
             Response::new_user_reply(&author, "já há muitos agentes neste chat!")
@@ -205,7 +205,7 @@ pub async fn invoke(mut ctx: CommandContext) -> anyhow::Result<()> {
         .get_all_by_channel(channel.id.get())
         .await?
         .len()
-        > 2
+        > 1
     {
         ctx.send(
             Response::new_user_reply(&author, "já há muitos agentes neste chat!")
