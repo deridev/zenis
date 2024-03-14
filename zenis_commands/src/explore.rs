@@ -31,7 +31,7 @@ pub async fn explore(mut ctx: CommandContext) -> anyhow::Result<()> {
                 &author,
                 "você quer explorar **agentes públicos** ou **agentes privados** do servidor?",
             )
-            .add_emoji_prefix(emojis::ERROR)
+            .add_emoji_prefix("❔")
             .set_components(make_multiple_rows(buttons.clone())),
         )
         .await?;

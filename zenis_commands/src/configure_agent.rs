@@ -85,12 +85,16 @@ pub async fn configure_agent(
             .set_label("Alterar Mensagem de Introdução")
             .set_style(ButtonStyle::Secondary),
         ButtonBuilder::new()
+            .set_custom_id("change_image")
+            .set_label("Alterar URL de Imagem")
+            .set_style(ButtonStyle::Secondary),
+        ButtonBuilder::new()
             .set_custom_id("change_invocation_price")
             .set_label("Alterar Preço de Invocação")
             .set_style(ButtonStyle::Secondary),
         ButtonBuilder::new()
             .set_custom_id("change_public")
-            .set_label(if agent.public { "Publicar" } else { "Privar" })
+            .set_label(if !agent.public { "Publicar" } else { "Privar" })
             .set_style(ButtonStyle::Secondary),
     ];
 
@@ -256,6 +260,33 @@ pub async fn configure_agent(
                 .add_emoji_prefix(emojis::SUCCESS),
         )
         .await?;
+    } else if data.custom_id == "change_image" {
+        let Ok(Some(image)) = get_input(
+            &mut ctx,
+            &author,
+            Response::new_user_reply(&author, "escreva a nova URL da imagem do agente:"),
+        )
+        .await
+        else {
+            return Ok(());
+        };
+
+        let Some(mut agent) = ctx.db().agents().get_by_identifier(identifier).await? else {
+            ctx.send(
+                Response::new_user_reply(&author, "agente inválido ou inexistente")
+                    .add_emoji_prefix(emojis::ERROR),
+            )
+            .await?;
+            return Ok(());
+        };
+
+        agent.agent_url_image = Some(image);
+        ctx.db().agents().save(agent).await?;
+
+        ctx.send(
+            Response::new_user_reply(&author, "imagem alterada com sucesso! Se o URL não for um PNG válido, o agente vai dar erro sempre que for invocado. Tome cuidado!")
+                .add_emoji_prefix(emojis::SUCCESS)
+        ).await?;
     } else if data.custom_id == "change_public" {
         if agent.public {
             let confirmation = ctx.helper().create_confirmation(
