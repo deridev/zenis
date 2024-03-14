@@ -163,5 +163,5 @@ pub struct PaymentPayload {
     pub currency_id: String,
     pub description: String,
     pub external_reference: Option<String>,
-    pub transaction_amount: i64,
+    pub transaction_amount: f64,
 }
