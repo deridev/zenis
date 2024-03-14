@@ -14,7 +14,7 @@ pub async fn officialguild(mut ctx: CommandContext) -> anyhow::Result<()> {
 
     ctx.reply(
         Response::from(embed).set_components(make_multiple_rows(vec![ButtonBuilder::new()
-            .set_url("https://discord.gg/h2ptaCUz")
+            .set_url("https://discord.gg/NaPXxajzSG")
             .set_label("Entrar no servidor")
             .set_style(ButtonStyle::Link)])),
     )
