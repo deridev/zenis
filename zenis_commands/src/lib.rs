@@ -26,12 +26,12 @@ mod configure_agent;
 mod create_agent;
 mod explore;
 mod guild;
+mod invite;
 mod invoke;
 mod my_agents;
 mod officialguild;
-mod wallet;
-mod invite;
 mod tutorial;
+mod wallet;
 
 mod adm;
 

@@ -17,6 +17,7 @@ use zenis_database::{
 };
 use zenis_discord::{
     twilight_model::{
+        gateway::payload::incoming::GuildCreate,
         guild::Guild,
         id::{
             marker::{ChannelMarker, GuildMarker, UserMarker},
@@ -24,7 +25,7 @@ use zenis_discord::{
         },
         user::{CurrentUser, User},
     },
-    DiscordHttpClient, EmbedAuthor, EmbedBuilder,
+    DiscordHttpClient, EmbedAuthor, EmbedBuilder, GuildExtension,
 };
 use zenis_payment::mp::{client::MercadoPagoClient, common::Item};
 
@@ -335,6 +336,41 @@ impl ZenisClient {
             .add_footer_text(format!(
                 "ACEITAR: /adm cmd: accept {}\nRECUSAR: /adm cmd: reject {} <motivo>",
                 agent.identifier, agent.identifier
+            ));
+
+        self.http
+            .execute_webhook(Id::new(hook_id), &hook_token)
+            .embeds(&[embed.build()])?
+            .await?;
+        Ok(())
+    }
+
+    pub async fn emit_guild_create_hook(
+        &self,
+        guild_create: Box<GuildCreate>,
+    ) -> anyhow::Result<()> {
+        let hook_id = std::env::var("GUILD_HOOK_ID")?.parse::<u64>()?;
+        let hook_token = std::env::var("GUILD_HOOK_TOKEN")?;
+
+        let guild = self.http.guild(guild_create.id).await?.model().await?;
+        let member_count = guild
+            .member_count
+            .map(|m| m.to_string())
+            .unwrap_or(String::from("?"));
+
+        let embed = EmbedBuilder::new_common()
+            .set_color(Color::CYAN_GREEN)
+            .set_thumbnail(guild.icon_url())
+            .set_author(EmbedAuthor {
+                name: "Servidor novo!".to_string(),
+                icon_url: Some(guild.icon_url()),
+            })
+            .add_inlined_field("📄 Nome", format!("**{}**", guild.name))
+            .add_inlined_field("👥 Membros", format!("**{}**", member_count))
+            .add_inlined_field("📢 Canais", guild.channels.len())
+            .add_footer_text(format!(
+                "ID do servidor: {}\nID do dono: {}",
+                guild.id, guild.owner_id
             ));
 
         self.http

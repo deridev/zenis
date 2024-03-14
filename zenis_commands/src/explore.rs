@@ -105,8 +105,11 @@ async fn generate_pagination(
 ) -> anyhow::Result<()> {
     if agents.is_empty() {
         ctx.reply(
-            Response::new_user_reply(author, "você não encontrou nenhum agente! Crie agentes com **/criar agente**!")
-                .add_emoji_prefix(emojis::ERROR),
+            Response::new_user_reply(
+                author,
+                "você não encontrou nenhum agente! Crie agentes com **/criar agente**!",
+            )
+            .add_emoji_prefix(emojis::ERROR),
         )
         .await?;
         return Ok(());

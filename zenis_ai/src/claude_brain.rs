@@ -70,7 +70,11 @@ impl Brain for ClaudeBrain {
                     content: m.content.clone(),
                 })
                 .collect(),
-            system: format!("{}\n<{}>", self.system_prompt(messages.len()), params.system_prompt),
+            system: format!(
+                "{}\n<{}>",
+                self.system_prompt(messages.len()),
+                params.system_prompt
+            ),
         };
 
         let response = self

@@ -46,7 +46,7 @@ async fn main() {
     })
     .expect("expected a valid Discord token");
 
-    let intents = Intents::GUILD_MESSAGES | Intents::MESSAGE_CONTENT;
+    let intents = Intents::GUILD_MESSAGES | Intents::MESSAGE_CONTENT | Intents::GUILD_MEMBERS;
     let config = Config::new(discord_token.clone(), intents);
 
     let mp_client = MercadoPagoClient::new(
@@ -241,7 +241,8 @@ async fn process_instance(
         .collect();
 
     let Ok(response) =
-        process_instance_message_queue(&mut instance, BrainType::Cohere, messages, config::DEBUG).await
+        process_instance_message_queue(&mut instance, BrainType::Cohere, messages, config::DEBUG)
+            .await
     else {
         instance.exit_reason = Some("Erro interno".to_string());
         database.instances().save(instance).await?;

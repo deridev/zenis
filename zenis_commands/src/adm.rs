@@ -5,6 +5,7 @@ type IdString = String;
 #[derive(Debug, Clone)]
 pub enum Command {
     Help,
+    ServerCount,
     ResetCache(Option<IdString>),
     AddCredits(IdString, i64),
     RemoveCredits(IdString, i64),
@@ -16,6 +17,7 @@ pub enum Command {
 impl Command {
     pub const HELP_EXAMPLES: &'static [&'static str] = &[
         "help",
+        "servercount",
         "reset cache [id]",
         "add credits <id> [quantity]",
         "remove credits <id> [quantity]",
@@ -31,6 +33,7 @@ impl Command {
 
         match command.as_str() {
             "help" => Some(Command::Help),
+            "servercount" => Some(Command::ServerCount),
             "reset" => {
                 let subcommand = splitted.next()?.to_lowercase();
                 match subcommand.as_str() {
@@ -136,6 +139,21 @@ pub async fn adm(
                     "exemplos de comandos:\n```\n{}\n```",
                     Command::HELP_EXAMPLES.join("\n")
                 ),
+            ))
+            .await?;
+        }
+        Command::ServerCount => {
+            let guilds = ctx
+                .client
+                .http
+                .current_user_guilds()
+                .await?
+                .models()
+                .await?
+                .len();
+            ctx.reply(Response::new_user_reply(
+                &author,
+                format!("**{}** servidores", guilds),
             ))
             .await?;
         }

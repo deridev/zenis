@@ -64,7 +64,11 @@ impl Brain for CohereBrain {
             model: params.model,
             max_tokens: params.max_tokens,
             message: last_message.map(|m| m.content.clone()).unwrap_or_default(),
-            system_prompt: format!("{}\n<{}>", self.system_prompt(messages.len()), params.system_prompt),
+            system_prompt: format!(
+                "{}\n<{}>",
+                self.system_prompt(messages.len()),
+                params.system_prompt
+            ),
             temperature: 0.6,
             chat_history: messages
                 .iter()

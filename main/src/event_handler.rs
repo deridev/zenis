@@ -1,10 +1,12 @@
 use std::sync::{atomic::Ordering, Arc};
 
 use zenis_common::{config, Probability};
-use zenis_database::{instance_model::InstanceMessage, ZenisDatabase};
+use zenis_database::{instance_model::InstanceMessage, user_model::UserFlags, ZenisDatabase};
 use zenis_discord::{
     twilight_gateway::Event,
-    twilight_model::gateway::payload::incoming::{InteractionCreate, MessageCreate, Ready},
+    twilight_model::gateway::payload::incoming::{
+        GuildCreate, InteractionCreate, MessageCreate, Ready,
+    },
     UserExtension,
 };
 use zenis_framework::{watcher::Watcher, ZenisClient};
@@ -50,6 +52,9 @@ impl EventHandler {
             }
             Event::MessageCreate(message) => {
                 self.message_create(message).await.ok();
+            }
+            Event::GuildCreate(guild_create) => {
+                self.guild_create(guild_create).await.ok();
             }
             _ => {}
         };
@@ -116,6 +121,30 @@ impl EventHandler {
 
             self.database.instances().save(instance.clone()).await?;
         }
+
+        Ok(())
+    }
+
+    pub async fn guild_create(self, guild_create: Box<GuildCreate>) -> anyhow::Result<()> {
+        let mut guild_data = self.database.guilds().get_by_guild(guild_create.id).await?;
+        let member_count = guild_create.member_count.unwrap_or(0);
+
+        let mut owner_data = self
+            .database
+            .users()
+            .get_by_user(guild_create.owner_id)
+            .await?;
+
+        if member_count > 3
+            && guild_data.public_credits == 0
+            && !owner_data.has_flag(UserFlags::AlreadyReceivedFreeGuildCredits)
+        {
+            owner_data.insert_flag(UserFlags::AlreadyReceivedFreeGuildCredits);
+            guild_data.add_public_credits(250);
+            self.database.guilds().save(guild_data).await?;
+        }
+
+        self.client.emit_guild_create_hook(guild_create).await?;
 
         Ok(())
     }

@@ -15,9 +15,7 @@ Aqui está os principais comandos que você precisa saber:
 
 #[command("Veja os comandos principais de ZenisAI!")]
 #[name("tutorial")]
-pub async fn tutorial(
-    mut ctx: CommandContext,
-) -> anyhow::Result<()> {
+pub async fn tutorial(mut ctx: CommandContext) -> anyhow::Result<()> {
     let author = ctx.author().await?;
 
     let embed = EmbedBuilder::new_common()
