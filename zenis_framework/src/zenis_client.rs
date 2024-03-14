@@ -29,7 +29,7 @@ use zenis_discord::{
 };
 use zenis_payment::mp::{client::MercadoPagoClient, common::Item};
 
-async fn load_png_from_url(url: &str) -> anyhow::Result<String> {
+async fn load_image_from_url(url: &str) -> anyhow::Result<String> {
     let client = reqwest::Client::new();
     let response = client.get(url).send().await?;
 
@@ -37,8 +37,16 @@ async fn load_png_from_url(url: &str) -> anyhow::Result<String> {
         .headers()
         .get("Content-Type")
         .and_then(|ct| ct.to_str().ok())
-        .unwrap_or("image/png")
-        .to_owned();
+        .map(|ct| ct.to_lowercase())
+        .unwrap_or_else(|| "image/jpeg".to_owned());
+
+    let is_png = mime_type.contains("png");
+    let is_jpeg = mime_type.contains("jpeg");
+    let is_jpg = mime_type.contains("jpg");
+
+    if !is_png && !is_jpeg && !is_jpg {
+        return Err(anyhow::anyhow!("Unsupported image format: {}", mime_type));
+    }
 
     let response_bytes = response.bytes().await?;
 
@@ -48,7 +56,6 @@ async fn load_png_from_url(url: &str) -> anyhow::Result<String> {
 
     Ok(data_uri)
 }
-
 #[derive(Debug)]
 pub struct ZenisClient {
     pub http: Arc<DiscordHttpClient>,
@@ -120,7 +127,7 @@ impl ZenisClient {
         payment_method: CreditsPaymentMethod,
     ) -> anyhow::Result<()> {
         let image = match &agent_model.agent_url_image {
-            Some(url) => load_png_from_url(url).await.ok(),
+            Some(url) => load_image_from_url(url).await.ok(),
             None => None,
         };
 

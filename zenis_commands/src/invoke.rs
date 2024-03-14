@@ -244,11 +244,13 @@ pub async fn invoke(mut ctx: CommandContext) -> anyhow::Result<()> {
         )
         .await;
 
-    if result.is_err() {
+    if let Some(e) = result.err() {
         ctx.client
             .http
             .delete_message(message.channel_id, message.id)
             .await?;
+
+        ctx.client.emit_error_hook(format!("Invocation failed. Agent ID: {}", agent.identifier), e).await.ok();
 
         ctx.send(
             Response::new_user_reply(&author, "**algo deu errado ao invocar o agente!**\nVerifique se o agente tem um link de imagem PNG válido. Se não for isso, talvez eu não tenha permissão de criar webhooks aqui.\nSe o erro persistir, entre em **/servidoroficial** e busque suporte!")
