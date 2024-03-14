@@ -344,7 +344,10 @@ pub async fn process_mp_notification(
     let payment = match client.mp_client.get_payment(payload.data.id.clone()).await {
         Ok(payment) => payment,
         Err(e) => {
-            eprintln!("[NOTIFICATION ERROR]\nMP payment not found with ID: {}\nError: {:?}", payload.data.id, e);
+            eprintln!(
+                "[NOTIFICATION ERROR]\nMP payment not found with ID: {}\nError: {:?}",
+                payload.data.id, e
+            );
             client
                 .emit_error_hook(
                     format!("MP payment not found with ID: {}", payload.data.id),

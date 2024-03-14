@@ -11,5 +11,6 @@ pub use zenis_discord::*;
 pub use zenis_framework::{Command as ZenisCommand, *};
 pub use zenis_macros::*;
 
+pub use crate::util::*;
 pub use anyhow::Context;
 pub use async_trait::async_trait;

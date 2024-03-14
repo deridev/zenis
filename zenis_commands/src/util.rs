@@ -1,6 +1,9 @@
-use zenis_common::Color;
+use std::time::Duration;
+
 use zenis_data::products::PRODUCTS;
-use zenis_discord::{EmbedAuthor, EmbedBuilder};
+use zenis_framework::watcher::WatcherOptions;
+
+use crate::prelude::*;
 
 pub fn format_duration(date: chrono::Duration) -> String {
     let mut string = String::with_capacity(64);
@@ -47,4 +50,29 @@ pub fn generate_products_embed() -> EmbedBuilder {
     }
 
     embed
+}
+
+pub async fn get_input(
+    ctx: &mut CommandContext,
+    author: &User,
+    message: impl Into<Response>,
+) -> anyhow::Result<Option<String>> {
+    let author_id = author.id;
+    let message = ctx.send(message).await?;
+
+    let Ok(Some(message)) = ctx
+        .watcher
+        .await_single_message(
+            message.channel_id,
+            move |message| message.author.id == author_id,
+            WatcherOptions {
+                timeout: Duration::from_secs(120),
+            },
+        )
+        .await
+    else {
+        return Ok(None);
+    };
+
+    Ok(Some(message.content.trim().to_owned()))
 }

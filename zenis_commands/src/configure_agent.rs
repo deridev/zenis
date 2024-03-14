@@ -370,28 +370,3 @@ pub async fn configure_agent(
 
     Ok(())
 }
-
-async fn get_input(
-    ctx: &mut CommandContext,
-    author: &User,
-    message: impl Into<Response>,
-) -> anyhow::Result<Option<String>> {
-    let author_id = author.id;
-    let message = ctx.send(message).await?;
-
-    let Ok(Some(message)) = ctx
-        .watcher
-        .await_single_message(
-            message.channel_id,
-            move |message| message.author.id == author_id,
-            WatcherOptions {
-                timeout: Duration::from_secs(120),
-            },
-        )
-        .await
-    else {
-        return Ok(None);
-    };
-
-    Ok(Some(message.content.trim().to_owned()))
-}

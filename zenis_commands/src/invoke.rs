@@ -9,12 +9,24 @@ use crate::prelude::*;
 #[command("Invoque um agente de IA no chat para conversar com você!")]
 #[name("invocar")]
 pub async fn invoke(mut ctx: CommandContext) -> anyhow::Result<()> {
+    let author = ctx.author().await?;
+    let author_id = author.id;
+
+    if ctx.interaction.guild_id.is_none() {
+        ctx.reply(
+            Response::new_user_reply(
+                &author,
+                "você precisa estar em um servidor para usar esse comando!",
+            )
+            .add_emoji_prefix(emojis::ERROR),
+        )
+        .await?;
+        return Ok(());
+    }
+
     let Some(channel) = ctx.interaction.channel.clone() else {
         return Ok(());
     };
-
-    let author = ctx.author().await?;
-    let author_id = author.id;
 
     if ctx
         .db()
@@ -220,7 +232,8 @@ pub async fn invoke(mut ctx: CommandContext) -> anyhow::Result<()> {
 
     let message = ctx.send(embed).await?;
 
-    let result = ctx.client
+    let result = ctx
+        .client
         .create_agent_instance(
             ctx.db(),
             channel.id,
@@ -239,7 +252,10 @@ pub async fn invoke(mut ctx: CommandContext) -> anyhow::Result<()> {
         return Ok(());
     }
 
-    ctx.client.http.delete_message(message.channel_id, message.id).await?;
+    ctx.client
+        .http
+        .delete_message(message.channel_id, message.id)
+        .await?;
 
     Ok(())
 }
