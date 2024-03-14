@@ -9,6 +9,7 @@ edition = "2021"
 zenis_discord = { path = "../zenis_discord" }
 
 anyhow = { workspace = true }
+bson = { workspace = true }
 reqwest = { workspace = true }
 serde = { workspace = true }
 serde-aux = { workspace = true }

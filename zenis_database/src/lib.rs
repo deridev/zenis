@@ -5,6 +5,7 @@ pub mod guild_commands;
 pub mod guild_model;
 pub mod instance_commands;
 pub mod instance_model;
+pub mod transaction;
 pub mod user_commands;
 pub mod user_model;
 
@@ -21,6 +22,7 @@ use mongodb::{Client, Collection, Database, IndexModel};
 
 pub use mongodb::bson;
 pub use mongodb::error::Error as MongoDBError;
+use transaction::TransactionCommands;
 use user_commands::UserCommands;
 use user_model::UserModel;
 
@@ -117,5 +119,10 @@ impl ZenisDatabase {
     pub fn instances(&self) -> InstanceCommands {
         let collection = self.db().collection("instances");
         InstanceCommands::new(collection, self.clone())
+    }
+
+    pub fn transactions(&self) -> TransactionCommands {
+        let collection = self.db().collection("transactions");
+        TransactionCommands::new(collection, self.clone())
     }
 }

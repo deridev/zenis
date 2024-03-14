@@ -12,6 +12,7 @@ use zenis_data::products::Product;
 use zenis_database::{
     agent_model::{AgentModel, AgentPricing},
     instance_model::{CreditsPaymentMethod, InstanceModel},
+    transaction::{CreditDestination, TransactionModel},
     ZenisDatabase,
 };
 use zenis_discord::{
@@ -25,10 +26,7 @@ use zenis_discord::{
     },
     DiscordHttpClient, EmbedAuthor, EmbedBuilder,
 };
-use zenis_payment::mp::{
-    client::{CreditDestination, MercadoPagoClient, Transaction, TransactionId},
-    common::Item,
-};
+use zenis_payment::mp::{client::MercadoPagoClient, common::Item};
 
 async fn load_png_from_url(url: &str) -> anyhow::Result<String> {
     let client = reqwest::Client::new();
@@ -80,25 +78,18 @@ impl ZenisClient {
         Ok(self.http.guild(id).await?.model().await?)
     }
 
-    pub async fn get_transaction(&self, id: TransactionId) -> Option<Transaction> {
-        self.mp_client.get_transaction(id).await
-    }
-
-    pub async fn delete_transaction(&self, id: TransactionId) -> anyhow::Result<()> {
-        self.mp_client.delete_transaction(id).await
-    }
-
     pub async fn create_transaction(
         &self,
         user_id: Id<UserMarker>,
         product: &Product,
         destination: CreditDestination,
-    ) -> anyhow::Result<(Transaction, String)> {
-        let (checkout, transaction) = self
+    ) -> anyhow::Result<(TransactionModel, String)> {
+        let transaction = TransactionModel::new(user_id.get(), product.id, destination);
+
+        let checkout = self
             .mp_client
             .create_preference(
-                user_id,
-                destination,
+                transaction.id,
                 vec![Item::simple(
                     product.effective_price(),
                     product.name,

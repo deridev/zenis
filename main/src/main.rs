@@ -1,7 +1,7 @@
 mod command_handler;
 mod event_handler;
 
-use std::{net::SocketAddr, sync::Arc, time::Duration};
+use std::{net::SocketAddr, str::FromStr, sync::Arc, time::Duration};
 
 use chrono::Utc;
 pub use event_handler::EventHandler;
@@ -15,7 +15,9 @@ use zenis_ai::{
 use zenis_common::{config, Color};
 use zenis_data::products::PRODUCTS;
 use zenis_database::{
+    bson::oid::ObjectId,
     instance_model::{CreditsPaymentMethod, InstanceModel},
+    transaction::CreditDestination,
     DatabaseState, ZenisDatabase,
 };
 use zenis_discord::{
@@ -29,10 +31,7 @@ use zenis_discord::{
 
 use tokio_stream::StreamExt;
 use zenis_framework::{watcher::Watcher, ZenisClient};
-use zenis_payment::mp::{
-    client::{CreditDestination, MercadoPagoClient, TransactionId},
-    notification::NotificationPayload,
-};
+use zenis_payment::mp::{client::MercadoPagoClient, notification::NotificationPayload};
 
 use warp::http::Response as WarpResponse;
 
@@ -90,7 +89,7 @@ async fn main() {
                 .map(|| warp::reply::html("This is the API for Zenis AI. Get out of here."));
 
             let notification_route = warp::path("notifications")
-                .and(warp::path::param::<u64>())
+                .and(warp::path::param::<String>())
                 .and(warp::post())
                 .and(warp::body::json())
                 .map(move |transaction_id, payload: serde_json::Value| {
@@ -98,7 +97,7 @@ async fn main() {
                 })
                 .and_then(
                     |(transaction_id, payload, client, database): (
-                        u64,
+                        String,
                         serde_json::Value,
                         Arc<ZenisClient>,
                         Arc<ZenisDatabase>,
@@ -122,7 +121,7 @@ async fn main() {
                             };
 
                             if let Err(e) = process_mp_notification(
-                                transaction_id.into(),
+                                transaction_id,
                                 notification_payload.clone(),
                                 client.clone(),
                                 database.clone(),
@@ -308,15 +307,34 @@ async fn process_instance_credits_payment(
 }
 
 pub async fn process_mp_notification(
-    transaction_id: TransactionId,
+    transaction_id: String,
     payload: NotificationPayload,
     client: Arc<ZenisClient>,
     database: Arc<ZenisDatabase>,
 ) -> anyhow::Result<()> {
     println!("[NOTIFICATION]\n{:?}", payload);
-    let Some(transaction) = client.get_transaction(transaction_id).await else {
+
+    let Ok(transaction_id) = ObjectId::from_str(&transaction_id) else {
+        client
+            .emit_error_hook(
+                "Invalid transaction ID".to_string(),
+                anyhow::anyhow!("Invalid transaction ID"),
+            )
+            .await?;
         return Ok(());
     };
+
+    let Some(transaction) = database.transactions().get_by_id(transaction_id).await? else {
+        client
+            .emit_error_hook(
+                format!("Transaction not found with ID: {}", transaction_id),
+                anyhow::anyhow!("Transaction not found"),
+            )
+            .await?;
+        return Ok(());
+    };
+
+    let transaction_user_id = Id::new(transaction.discord_user_id);
 
     let payment = client.mp_client.get_payment(payload.data.id).await?;
     println!("[PAYMENT]\n{:?}", payment);
@@ -325,7 +343,7 @@ pub async fn process_mp_notification(
         () => {{
             client
                 .http
-                .create_private_channel(transaction.discord_user_id)
+                .create_private_channel(transaction_user_id)
                 .await?
                 .model()
                 .await?
@@ -372,7 +390,7 @@ pub async fn process_mp_notification(
                 .await?;
 
             client
-                .emit_transaction_hook(false, 0.0, product, transaction.discord_user_id, payment.id)
+                .emit_transaction_hook(false, 0.0, product, transaction_user_id, payment.id)
                 .await
                 .ok();
 
@@ -383,7 +401,10 @@ pub async fn process_mp_notification(
         }
     }
 
-    client.delete_transaction(transaction_id).await.ok();
+    database
+        .transactions()
+        .delete_transaction(transaction_id)
+        .await?;
 
     let mut embed = EmbedBuilder::new_common()
         .set_color(Color::GREEN)
@@ -392,14 +413,14 @@ pub async fn process_mp_notification(
 
     match transaction.credit_destination {
         CreditDestination::User(user_id) => {
-            let mut user_data = database.users().get_by_user(user_id).await?;
+            let mut user_data = database.users().get_by_user(Id::new(user_id)).await?;
             user_data.add_credits(product.amount_of_credits);
             database.users().save(user_data).await?;
 
             embed = embed.add_inlined_field("Destinatário", format!("Usuário: `{}`", user_id));
         }
         CreditDestination::PublicGuild(guild_id) => {
-            let mut guild_data = database.guilds().get_by_guild(guild_id).await?;
+            let mut guild_data = database.guilds().get_by_guild(Id::new(guild_id)).await?;
             guild_data.add_public_credits(product.amount_of_credits);
             database.guilds().save(guild_data).await?;
 
@@ -409,7 +430,7 @@ pub async fn process_mp_notification(
             );
         }
         CreditDestination::PrivateGuild(guild_id) => {
-            let mut guild_data = database.guilds().get_by_guild(guild_id).await?;
+            let mut guild_data = database.guilds().get_by_guild(Id::new(guild_id)).await?;
             guild_data.add_credits(product.amount_of_credits);
             database.guilds().save(guild_data).await?;
 
@@ -422,8 +443,6 @@ pub async fn process_mp_notification(
 
     let dm_channel = get_dm_channel!();
 
-    // im tired of deadlocks. Let's use channels. Communicate by passing messages, right?
-
     client
         .http
         .create_message(dm_channel.id)
@@ -435,7 +454,7 @@ pub async fn process_mp_notification(
             true,
             payment.transaction_amount as f64,
             product,
-            transaction.discord_user_id,
+            transaction_user_id,
             payment.id,
         )
         .await

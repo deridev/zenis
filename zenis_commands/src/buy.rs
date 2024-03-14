@@ -2,9 +2,9 @@ use std::time::Duration;
 
 use anyhow::bail;
 use zenis_data::products::PRODUCTS;
+use zenis_database::transaction::CreditDestination;
 use zenis_discord::twilight_model::channel::message::component::ButtonStyle;
 use zenis_framework::{util::make_multiple_rows, watcher::WatcherOptions};
-use zenis_payment::mp::client::CreditDestination;
 
 use crate::{prelude::*, util::generate_products_embed};
 
@@ -196,7 +196,7 @@ async fn get_destination(
         .await?;
 
     if data.custom_id == "user" {
-        return Ok(CreditDestination::User(author.id));
+        return Ok(CreditDestination::User(author.id.get()));
     }
 
     // Guild selection
@@ -283,15 +283,15 @@ async fn get_destination(
         bail!("Invalid guild ID")
     };
 
-    let Some(guild_id) = Id::new_checked(guild_id) else {
+    let Some(guild_id) = Id::<GuildMarker>::new_checked(guild_id) else {
         ctx.send_in_channel("ID inválido. (ID não pode ser zero)")
             .await?;
         bail!("Invalid guild ID")
     };
 
     if data.custom_id == "public" {
-        Ok(CreditDestination::PublicGuild(guild_id))
+        Ok(CreditDestination::PublicGuild(guild_id.get()))
     } else {
-        Ok(CreditDestination::PrivateGuild(guild_id))
+        Ok(CreditDestination::PrivateGuild(guild_id.get()))
     }
 }
