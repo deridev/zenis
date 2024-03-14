@@ -102,6 +102,8 @@ async fn main() {
                         Arc<ZenisClient>,
                         Arc<ZenisDatabase>,
                     )| async move {
+                        println!(">>>>>>>>>>>>> {:?}", payload);
+
                         if payload.get("action").is_some() {
                             let notification_payload = match serde_json::from_value::<
                                 NotificationPayload,
