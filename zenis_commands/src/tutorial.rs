@@ -7,7 +7,7 @@ Aqui está os principais comandos que você precisa saber:
 **/invocar** -> `invoca um agente de IA no chat para conversar`
 **/servidor** -> `mostra a carteira do servidor`
 **/criar agente** -> `gasta créditos para criar um agente para você`
-**/explorar** -> `veja todos os agentes criador por usuários`
+**/explorar** -> `veja todos os agentes criados por usuários`
 **/convidar** -> `convide Zenis para o seu servidor`
 **/servidoroficial** -> `entre no servidor oficial do ZenisAI`
 

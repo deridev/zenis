@@ -9,6 +9,7 @@ pub enum Command {
     ResetCache(Option<IdString>),
     AddCredits(IdString, i64),
     RemoveCredits(IdString, i64),
+    ClearChannelInstances(u64, String),
     ClearInstances(String),
     Accept(String),
     Reject(String, String),
@@ -65,6 +66,11 @@ impl Command {
                 let subcommand = splitted.next()?.to_lowercase();
 
                 match subcommand.as_str() {
+                    "channelinstances" => {
+                        let id = splitted.next()?.to_lowercase().parse::<u64>().ok()?;
+                        let reason = splitted.collect::<Vec<_>>().join(" ");
+                        Some(Command::ClearChannelInstances(id, reason))
+                    }
                     "instances" => {
                         let reason = splitted.collect::<Vec<_>>().join(" ");
                         Some(Command::ClearInstances(reason))
@@ -244,6 +250,21 @@ pub async fn adm(
                 ))
                 .await?;
             }
+        }
+        Command::ClearChannelInstances(id, reason) => {
+            let instances = ctx.db().instances().all_actives_in_channel(id).await?;
+            let mut counter = 0;
+            for mut instance in instances {
+                counter += 1;
+                instance.exit_reason = Some(reason.clone());
+                ctx.db().instances().save(instance).await?;
+            }
+
+            ctx.reply(Response::new_user_reply(
+                &author,
+                format!("**{}** instâncias foram desligadas com sucesso no canal **{}**.", counter, id),
+            ))
+            .await?;
         }
         Command::ClearInstances(reason) => {
             let reason = if reason.is_empty() {

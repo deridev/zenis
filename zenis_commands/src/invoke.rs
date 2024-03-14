@@ -147,6 +147,15 @@ pub async fn invoke(mut ctx: CommandContext) -> anyhow::Result<()> {
         return Ok(());
     };
 
+    if !agent.public && agent.creator_user_id != author.id.get() && agent.guild_id != channel.guild_id.map(|g| g.get()) {
+        ctx.send(
+            Response::new_user_reply(&author, "você não tem permissão para invocar este agente privado!")
+                .add_emoji_prefix(emojis::ERROR),
+        )
+        .await?;
+        return Ok(());
+    }
+
     let mut payment_method = CreditsPaymentMethod::UserCredits(author_id.get());
 
     if let Some(guild_id) = channel.guild_id {
