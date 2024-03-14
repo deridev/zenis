@@ -296,8 +296,10 @@ async fn get_destination(
 
     let guild = ctx.client.get_guild(guild_id).await;
     if guild.is_err() {
-        ctx.send_in_channel("eu não consegui encontrar esse servidor. Confira o ID e se eu estou nesse servidor!")
-            .await?;
+        ctx.send_in_channel(
+            "eu não consegui encontrar esse servidor. Confira o ID e se eu estou nesse servidor!",
+        )
+        .await?;
         bail!("Invalid guild ID")
     };
 

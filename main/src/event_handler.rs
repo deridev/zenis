@@ -1,7 +1,9 @@
 use std::sync::{atomic::Ordering, Arc};
 
 use zenis_common::{config, Probability};
-use zenis_database::{instance_model::InstanceMessage, user_model::UserFlags, ZenisDatabase};
+use zenis_database::{
+    guild_model::GuildFlag, instance_model::InstanceMessage, user_model::UserFlags, ZenisDatabase,
+};
 use zenis_discord::{
     twilight_gateway::Event,
     twilight_model::gateway::payload::incoming::{
@@ -143,7 +145,12 @@ impl EventHandler {
             self.database.users().save(owner_data).await?;
         }
 
-        self.client.emit_guild_create_hook(guild_create).await?;
+        let mut guild_data = self.database.guilds().get_by_guild(guild_create.id).await?;
+        if !guild_data.has_flag(GuildFlag::AlreadyAknowledged) {
+            guild_data.add_flag(GuildFlag::AlreadyAknowledged);
+            self.database.guilds().save(guild_data).await?;
+            self.client.emit_guild_create_hook(guild_create).await?;
+        }
 
         Ok(())
     }

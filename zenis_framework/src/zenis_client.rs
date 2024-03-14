@@ -352,7 +352,13 @@ impl ZenisClient {
         let hook_id = std::env::var("GUILD_HOOK_ID")?.parse::<u64>()?;
         let hook_token = std::env::var("GUILD_HOOK_TOKEN")?;
 
-        let guild = self.http.guild(guild_create.id).with_counts(true).await?.model().await?;
+        let guild = self
+            .http
+            .guild(guild_create.id)
+            .with_counts(true)
+            .await?
+            .model()
+            .await?;
         let member_count = guild
             .approximate_member_count
             .map(|m| m.to_string())
