@@ -18,6 +18,7 @@ pub struct BrainParameters {
 }
 
 pub const DEFAULT_SYSTEM_PROMPT: &str = include_str!("default_system_prompt.txt");
+pub const SYSTEM_PROMPT_EXAMPLES: &str = include_str!("system_prompt_examples.txt");
 
 #[async_trait]
 pub trait Brain {
@@ -31,6 +32,18 @@ pub trait Brain {
             system_prompt: String::new(),
             strip_italic_actions: false,
         }
+    }
+
+    fn system_prompt(&self, messages: usize) -> String {
+        let mut system_prompt = DEFAULT_SYSTEM_PROMPT.to_string();
+
+        if messages < 4 {
+            system_prompt = system_prompt.replace("%EXAMPLES%", SYSTEM_PROMPT_EXAMPLES);
+        } else {
+            system_prompt = system_prompt.replace("%EXAMPLES%", "");
+        }
+
+        system_prompt
     }
 
     fn http_client(&self) -> Arc<reqwest::Client> {

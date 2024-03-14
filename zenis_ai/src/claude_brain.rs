@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    brain::{Brain, BrainParameters, DEFAULT_SYSTEM_PROMPT},
+    brain::{Brain, BrainParameters},
     common::{ChatMessage, ChatResponse, Role},
     util::remove_italic_actions,
 };
@@ -70,7 +70,7 @@ impl Brain for ClaudeBrain {
                     content: m.content.clone(),
                 })
                 .collect(),
-            system: format!("{}\n<{}>", DEFAULT_SYSTEM_PROMPT, params.system_prompt),
+            system: format!("{}\n<{}>", self.system_prompt(messages.len()), params.system_prompt),
         };
 
         let response = self

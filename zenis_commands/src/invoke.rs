@@ -1,3 +1,4 @@
+#![allow(clippy::len_zero)]
 use std::time::Duration;
 
 use zenis_database::{agent_model::AgentModel, instance_model::CreditsPaymentMethod};
@@ -34,7 +35,7 @@ pub async fn invoke(mut ctx: CommandContext) -> anyhow::Result<()> {
         .get_all_by_channel(channel.id.get())
         .await?
         .len()
-        > 1
+        > 0
     {
         ctx.reply(
             Response::new_user_reply(&author, "já há muitos agentes neste chat!")
@@ -205,7 +206,7 @@ pub async fn invoke(mut ctx: CommandContext) -> anyhow::Result<()> {
         .get_all_by_channel(channel.id.get())
         .await?
         .len()
-        > 1
+        > 0
     {
         ctx.send(
             Response::new_user_reply(&author, "já há muitos agentes neste chat!")

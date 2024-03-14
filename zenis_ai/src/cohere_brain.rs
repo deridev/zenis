@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    brain::{Brain, BrainParameters, DEFAULT_SYSTEM_PROMPT},
+    brain::{Brain, BrainParameters},
     common::{ChatMessage, ChatResponse, Role},
     util::remove_italic_actions,
 };
@@ -64,7 +64,7 @@ impl Brain for CohereBrain {
             model: params.model,
             max_tokens: params.max_tokens,
             message: last_message.map(|m| m.content.clone()).unwrap_or_default(),
-            system_prompt: format!("{}\n<{}>", DEFAULT_SYSTEM_PROMPT, params.system_prompt),
+            system_prompt: format!("{}\n<{}>", self.system_prompt(messages.len()), params.system_prompt),
             temperature: 0.6,
             chat_history: messages
                 .iter()
