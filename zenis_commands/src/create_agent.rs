@@ -165,9 +165,9 @@ pub async fn create_agent(mut ctx: CommandContext) -> anyhow::Result<()> {
     };
 
     let agent_image_url = message.content.trim().to_owned();
-    if agent_image_url != "." && !agent_image_url.starts_with("http") {
+    if agent_image_url != "." && ctx.client.load_url_image(agent_image_url.to_owned()).await.is_none() {
         ctx.send(
-            Response::new_user_reply(&author, "URL inválida!").add_emoji_prefix(emojis::ERROR),
+            Response::new_user_reply(&author, "URL de imagem inválida!").add_emoji_prefix(emojis::ERROR),
         )
         .await?;
         return Ok(());

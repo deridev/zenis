@@ -271,6 +271,14 @@ pub async fn configure_agent(
             return Ok(());
         };
 
+        if ctx.client.load_url_image(image.to_owned()).await.is_none() {
+            ctx.send(
+                Response::new_user_reply(&author, "URL de imagem inválida!").add_emoji_prefix(emojis::ERROR),
+            )
+            .await?;
+            return Ok(());
+        }
+
         let Some(mut agent) = ctx.db().agents().get_by_identifier(identifier).await? else {
             ctx.send(
                 Response::new_user_reply(&author, "agente inválido ou inexistente")

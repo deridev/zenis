@@ -86,6 +86,14 @@ impl ZenisClient {
         Ok(self.http.guild(id).await?.model().await?)
     }
 
+    pub async fn load_url_image(&self, url: impl ToString) -> Option<String> {
+        let Ok(image) = load_image_from_url(&url.to_string()).await else {
+            return None;
+        };
+
+        Some(image)
+    }
+
     pub async fn create_transaction(
         &self,
         user_id: Id<UserMarker>,
