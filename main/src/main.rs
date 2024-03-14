@@ -130,6 +130,7 @@ async fn main() {
                             )
                             .await
                             {
+                                eprintln!("[NOTIFICATION ERROR]\n{:?}", e);
                                 client
                                     .emit_error_hook(
                                         format!(
@@ -317,6 +318,7 @@ pub async fn process_mp_notification(
     println!("[NOTIFICATION]\n{:?}", payload);
 
     let Ok(transaction_id) = ObjectId::from_str(&transaction_id) else {
+        println!("Invalid transaction ID");
         client
             .emit_error_hook(
                 "Invalid transaction ID".to_string(),
@@ -327,6 +329,7 @@ pub async fn process_mp_notification(
     };
 
     let Some(transaction) = database.transactions().get_by_id(transaction_id).await? else {
+        println!("Transaction not found with ID: {}", transaction_id);
         client
             .emit_error_hook(
                 format!("Transaction not found with ID: {}", transaction_id),
@@ -338,7 +341,16 @@ pub async fn process_mp_notification(
 
     let transaction_user_id = Id::new(transaction.discord_user_id);
 
-    let payment = client.mp_client.get_payment(payload.data.id).await?;
+    let Ok(payment) = client.mp_client.get_payment(payload.data.id.clone()).await else {
+        eprintln!("[NOTIFICATION ERROR]\nMP payment not found with ID: {}", payload.data.id);
+        client
+            .emit_error_hook(
+                format!("MP payment not found with ID: {}", payload.data.id),
+                anyhow::anyhow!("Transaction not found"),
+            )
+            .await?;
+        return Ok(());
+    };
     println!("[PAYMENT]\n{:?}", payment);
 
     macro_rules! get_dm_channel {
