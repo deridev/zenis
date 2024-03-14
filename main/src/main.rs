@@ -429,7 +429,7 @@ pub async fn process_mp_notification(
 
     let mut embed = EmbedBuilder::new_common()
         .set_color(Color::GREEN)
-        .set_description(format!("## ✅ Pagamento aprovado!\n\nVocê efetuou a compra do produto **{}** no valor de **R$ {:.2?}**.\nAproveite ZenisAI!", product.name, product.price))
+        .set_description(format!("## ✅ Pagamento aprovado!\n\nVocê efetuou a compra do produto **{}** no valor de **R$ {:.2?}**.\nAproveite ZenisAI!", product.name, product.effective_price()))
         .add_footer_text("Algum problema? Contate o suporte do ZenisAI no servidor oficial (/servidoroficial)!");
 
     match transaction.credit_destination {
