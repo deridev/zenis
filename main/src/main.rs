@@ -341,16 +341,20 @@ pub async fn process_mp_notification(
 
     let transaction_user_id = Id::new(transaction.discord_user_id);
 
-    let Ok(payment) = client.mp_client.get_payment(payload.data.id.clone()).await else {
-        eprintln!("[NOTIFICATION ERROR]\nMP payment not found with ID: {}", payload.data.id);
-        client
-            .emit_error_hook(
-                format!("MP payment not found with ID: {}", payload.data.id),
-                anyhow::anyhow!("Transaction not found"),
-            )
-            .await?;
-        return Ok(());
+    let payment = match client.mp_client.get_payment(payload.data.id.clone()).await {
+        Ok(payment) => payment,
+        Err(e) => {
+            eprintln!("[NOTIFICATION ERROR]\nMP payment not found with ID: {}\nError: {:?}", payload.data.id, e);
+            client
+                .emit_error_hook(
+                    format!("MP payment not found with ID: {}", payload.data.id),
+                    e,
+                )
+                .await?;
+            return Ok(());
+        }
     };
+
     println!("[PAYMENT]\n{:?}", payment);
 
     macro_rules! get_dm_channel {
