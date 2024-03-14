@@ -31,7 +31,19 @@ pub fn generate_products_embed() -> EmbedBuilder {
         });
 
     for product in PRODUCTS.iter() {
-        embed = embed.add_inlined_field(product.name, format!("R$ {:.2?}", product.price));
+        embed = embed.add_inlined_field(
+            product.name,
+            if product.effective_price() == product.price {
+                format!("R$ {:.2?}", product.price)
+            } else {
+                format!(
+                    "*~~`R$ {:.2?}`~~*\n**R$ {:.2?}**!\n({}% de desconto)",
+                    product.price,
+                    product.effective_price(),
+                    (product.discount * 100.0) as i64
+                )
+            },
+        );
     }
 
     embed

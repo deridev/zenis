@@ -113,7 +113,7 @@ pub async fn buy(mut ctx: CommandContext) -> anyhow::Result<()> {
         })
         .set_description(format!(
             "### {} Você está comprando {}!\n\n## **Preço:** R$ {}\n\n* *O processo de compra é rápido e seguro. PIX é o método de pagamento padrão por ser mais rápido e prático, mas aceitamos crédito, débito e boleto.*",
-            emojis::CREDIT, product.name, product.price
+            emojis::CREDIT, product.name, product.effective_price()
         ))
         .add_footer_text("O botão de pagamento expira em 30 minutos.");
 

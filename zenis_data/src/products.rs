@@ -5,6 +5,13 @@ pub struct Product {
     pub description: &'static str,
     pub price: f64,
     pub amount_of_credits: i64,
+    pub discount: f64,
+}
+
+impl Product {
+    pub fn effective_price(&self) -> f64 {
+        self.price * (1.0 - self.discount)
+    }
 }
 
 const DEFAULT_DESCRIPTION: &str = "Créditos são usados para usar Zenis AI";
@@ -16,6 +23,7 @@ pub const PRODUCTS: &[Product] = &[
         description: DEFAULT_DESCRIPTION,
         price: 9.0,
         amount_of_credits: 500,
+        discount: 0.5,
     },
     Product {
         id: "1000_credits",
@@ -23,6 +31,7 @@ pub const PRODUCTS: &[Product] = &[
         description: DEFAULT_DESCRIPTION,
         price: 17.0,
         amount_of_credits: 1000,
+        discount: 0.5,
     },
     Product {
         id: "2000_credits",
@@ -30,6 +39,7 @@ pub const PRODUCTS: &[Product] = &[
         description: DEFAULT_DESCRIPTION,
         price: 30.0,
         amount_of_credits: 2000,
+        discount: 0.5,
     },
     Product {
         id: "5000_credits",
@@ -37,6 +47,7 @@ pub const PRODUCTS: &[Product] = &[
         description: DEFAULT_DESCRIPTION,
         price: 70.0,
         amount_of_credits: 5000,
+        discount: 0.5,
     },
     Product {
         id: "10000_credits",
@@ -44,6 +55,7 @@ pub const PRODUCTS: &[Product] = &[
         description: DEFAULT_DESCRIPTION,
         price: 130.0,
         amount_of_credits: 10000,
+        discount: 0.5,
     },
 ];
 
