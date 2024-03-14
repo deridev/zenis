@@ -313,11 +313,13 @@ pub async fn process_mp_notification(
     client: Arc<ZenisClient>,
     database: Arc<ZenisDatabase>,
 ) -> anyhow::Result<()> {
+    println!("[NOTIFICATION]\n{:?}", payload);
     let Some(transaction) = client.get_transaction(transaction_id).await else {
         return Ok(());
     };
 
     let payment = client.mp_client.get_payment(payload.data.id).await?;
+    println!("[PAYMENT]\n{:?}", payment);
 
     macro_rules! get_dm_channel {
         () => {{
