@@ -103,7 +103,7 @@ impl InstanceModel {
         if first_message.is_none() || first_message.is_some_and(|m| !m.is_user) {
             self.push_message(InstanceMessage {
                 is_user: true,
-                content: "<Se apresente>".to_string(),
+                content: format!("<Se apresente, {}>", self.agent_name),
             });
         }
 
