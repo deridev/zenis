@@ -93,7 +93,17 @@ impl EventHandler {
             return Ok(());
         }
 
-        let image_url = message.attachments.first().map(|a| a.url.clone());
+        const VALID_IMAGE_TYPES: &[&str] = &["image/png", "image/jpeg", "image/jpg"];
+        let image_url = message
+            .attachments
+            .iter()
+            .filter(|m| {
+                m.content_type
+                    .as_ref()
+                    .is_some_and(|c| VALID_IMAGE_TYPES.contains(&c.as_str()))
+            })
+            .map(|a| a.url.clone())
+            .next();
 
         let author = message.author.clone();
         let mut instances = self

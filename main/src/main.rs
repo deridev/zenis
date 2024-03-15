@@ -230,7 +230,7 @@ async fn process_instance(
     }
 
     instance.is_awaiting_new_messages = true;
-    
+
     let mut image_processed = false;
 
     let messages = instance
@@ -246,14 +246,14 @@ async fn process_instance(
                     Role::Assistant
                 },
                 content: m.content.clone(),
-                image_url: if is_last { 
+                image_url: if is_last {
                     if m.image_url.is_some() && !image_processed {
                         image_processed = true;
                     }
 
-                    m.image_url.clone() 
-                } else { 
-                    None 
+                    m.image_url.clone()
+                } else {
+                    None
                 },
             }
         })
