@@ -89,7 +89,7 @@ impl EventHandler {
             .model()
             .await?;
 
-        if config::BOT_IDS.contains(&message.author.id.get()) {
+        if config::BOT_IDS.contains(&message.author.id.get()) || message.content.starts_with('>') || message.content.starts_with('_') {
             return Ok(());
         }
 
