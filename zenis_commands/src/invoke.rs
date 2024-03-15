@@ -224,16 +224,27 @@ pub async fn invoke(mut ctx: CommandContext) -> anyhow::Result<()> {
         ctx.db().users().save(creator_data).await.ok();
     }
 
-    if ctx
+    let channel_instances = ctx
         .db()
         .instances()
         .get_all_by_channel(channel.id.get())
-        .await?
-        .len()
-        > 1
-    {
+        .await?;
+
+    if channel_instances.len() > 1 {
         ctx.send(
             Response::new_user_reply(&author, "já há muitos agentes neste chat!")
+                .add_emoji_prefix(emojis::ERROR),
+        )
+        .await?;
+        return Ok(());
+    }
+
+    if channel_instances
+        .iter()
+        .any(|instance| instance.agent_identifier == agent.identifier)
+    {
+        ctx.send(
+            Response::new_user_reply(&author, "esse agente já está invocado neste chat!")
                 .add_emoji_prefix(emojis::ERROR),
         )
         .await?;
@@ -418,7 +429,7 @@ pub async fn ask_for_brain(ctx: &mut CommandContext) -> anyhow::Result<InstanceB
             name: "Seleção de Cérebro".to_string(),
             icon_url: Some(author.avatar_url()),
         })
-        .set_description(format!("## {} Escolha qual cérebro você quer no seu agente:\n\n**Command-R**: cérebro normal. Preço padrão. Menos carismático, mais rápido.\n\n**Haiku**: mais carismático, mais lento e consegue ver imagens. 2 créditos mais caro por mensagem, 3 créditos extra pra cada imagem.", "🧠"));
+        .set_description(format!("## {} Escolha qual cérebro você quer no seu agente:\n\n⚡ **Command-R**: cérebro normal. Preço padrão. Menos carismático, mais rápido.\n\n💪 **Haiku**: mais carismático, mais lento e consegue ver imagens. 2 créditos mais caro por mensagem, 3 créditos extra pra cada imagem.", "🧠"));
 
     let message = ctx
         .send(
@@ -462,6 +473,8 @@ pub async fn ask_for_brain(ctx: &mut CommandContext) -> anyhow::Result<InstanceB
     let mut ctx = CommandContext::from_with_interaction(ctx, Box::new(interaction));
     ctx.update_message(Response::default().set_components(make_multiple_rows(buttons)))
         .await?;
+
+    ctx.client.http.delete_message(message.channel_id, message.id).await.ok();
 
     match data.custom_id.as_str() {
         "cohere_command_r" => Ok(InstanceBrain::CohereCommandR),

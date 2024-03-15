@@ -20,7 +20,9 @@ pub struct ClaudeImage {
 pub struct ClaudeContent {
     #[serde(rename = "type")]
     pub ty: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub source: Option<ClaudeImage>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub text: Option<String>,
 }
 
@@ -30,7 +32,7 @@ pub struct ClaudeChatMessage {
     pub content: Vec<ClaudeContent>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Default)]
 pub struct ClaudeChatResponse {
     pub content: Vec<ClaudeContent>,
 }
@@ -73,12 +75,12 @@ impl Brain for ClaudeBrain {
         for (index, message) in messages.iter().enumerate() {
             let mut contents = vec![];
             if let Some(image_url) = &message.image_url {
-                if index == len - 1 {
+                if index == len - 1 && message.role == Role::User {
                     let image = load_image_from_url(image_url).await?;
                     contents.push(ClaudeContent {
                         ty: "image".to_string(),
                         source: Some(ClaudeImage {
-                            ty: "image".to_string(),
+                            ty: "base64".to_string(),
                             media_type: image.mime_type,
                             data: image.data,
                         }),
