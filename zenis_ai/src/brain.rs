@@ -37,7 +37,7 @@ pub trait Brain {
     fn system_prompt(&self, messages: usize) -> String {
         let mut system_prompt = DEFAULT_SYSTEM_PROMPT.to_string();
 
-        if messages < 6 {
+        if messages < 3 {
             system_prompt = system_prompt.replace("%EXAMPLES%", SYSTEM_PROMPT_EXAMPLES);
         } else {
             system_prompt = system_prompt.replace("%EXAMPLES%", "");

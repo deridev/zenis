@@ -125,14 +125,16 @@ impl Brain for ClaudeBrain {
             .header("anthropic-version", "2023-06-01")
             .json(&request)
             .send()
-            .await;
+            .await?;
 
-        let mut response: ClaudeChatResponse = match response {
-            Ok(response) => response.json().await?,
-            Err(e) => {
-                return Err(e.into());
-            }
-        };
+        let status = response.status();
+        if !status.is_success() {
+            let mut text = response.text().await?;
+            text.truncate(1800);
+            return Err(anyhow::anyhow!("Status code: {}\n{:?}", status, text));
+        }
+
+        let mut response: ClaudeChatResponse = response.json().await?;
 
         if params.strip_italic_actions {
             response.content.iter_mut().for_each(|reply| {

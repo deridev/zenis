@@ -94,14 +94,16 @@ impl Brain for CohereBrain {
             )
             .json(&request)
             .send()
-            .await;
+            .await?;
 
-        let mut response: CohereChatResponse = match response {
-            Ok(response) => response.json().await?,
-            Err(e) => {
-                return Err(e.into());
-            }
-        };
+        let status = response.status();
+        if !status.is_success() {
+            let mut text = response.text().await?;
+            text.truncate(1800);
+            return Err(anyhow::anyhow!("Status code: {}\n{:?}", status, text));
+        }
+
+        let mut response: CohereChatResponse = response.json().await?;
 
         if params.strip_italic_actions {
             response.text = remove_italic_actions(&response.text);

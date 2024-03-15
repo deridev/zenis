@@ -136,7 +136,7 @@ impl EventHandler {
 
             if author.bot {
                 instance.last_sent_message_timestamp +=
-                    StdRng::from_entropy().gen_range(9..=15) + len;
+                    StdRng::from_entropy().gen_range(9..=13) + len;
 
                 if Probability::new(30).generate_random_bool() {
                     instance.is_awaiting_new_messages = true;

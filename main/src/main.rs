@@ -267,8 +267,9 @@ async fn process_instance(
             client
                 .emit_error_hook(
                     format!(
-                        "Internal agent error. Agent ID: {}",
-                        instance.agent_identifier
+                        "Internal agent error. Agent ID: {}, brain used: {}",
+                        instance.agent_identifier,
+                        instance.brain.name()
                     ),
                     e,
                 )
