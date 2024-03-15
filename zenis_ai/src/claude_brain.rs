@@ -67,10 +67,14 @@ impl Brain for ClaudeBrain {
     async fn prompt_chat(
         &self,
         params: BrainParameters,
-        messages: Vec<ChatMessage>,
+        mut messages: Vec<ChatMessage>,
     ) -> anyhow::Result<ChatResponse> {
         let mut claude_messages = Vec::with_capacity(messages.len());
         let len = messages.len();
+
+        while messages.first().is_some_and(|m| m.role != Role::User) {
+            messages.remove(0);
+        }
 
         for (index, message) in messages.iter().enumerate() {
             let mut contents = vec![];
