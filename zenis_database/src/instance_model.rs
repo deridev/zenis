@@ -20,6 +20,7 @@ pub struct InstanceMessage {
 pub struct InstanceModel {
     #[serde(rename = "_id")]
     pub id: ObjectId,
+    pub summoner_id: u64,
     pub channel_id: u64,
     pub agent_identifier: String,
     pub agent_name: String,
@@ -43,6 +44,7 @@ pub struct InstanceModel {
 
 impl InstanceModel {
     pub fn new(
+        summoner_id: u64,
         channel_id: u64,
         agent_model: AgentModel,
         pricing: AgentPricing,
@@ -52,6 +54,7 @@ impl InstanceModel {
         Self {
             id: ObjectId::new(),
             channel_id,
+            summoner_id,
             pricing,
             agent_identifier: agent_model.identifier.clone(),
             agent_name: agent_model.name.clone(),
@@ -77,7 +80,7 @@ impl InstanceModel {
         let instance_message: InstanceMessage = message.into();
 
         if let Some(last_message) = self.history.last_mut() {
-            if last_message.is_user && last_message.content.len() < 600 {
+            if last_message.is_user && instance_message.is_user && last_message.content.len() < 400 {
                 last_message
                     .content
                     .push_str(&format!("\n{}", instance_message.content));
@@ -88,7 +91,7 @@ impl InstanceModel {
             self.history.push(instance_message);
         }
 
-        if self.history.len() > 7 {
+        if self.history.len() > 10 {
             self.history.remove(0);
         }
 

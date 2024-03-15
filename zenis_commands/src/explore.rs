@@ -115,17 +115,20 @@ async fn generate_pagination(
         return Ok(());
     }
 
-    agents.sort_unstable_by_key(|agent| agent.stats.invocations);
+    agents.sort_unstable_by_key(|agent| u64::MAX.saturating_sub(agent.stats.invocations));
     agents.retain(|agent| !agent.tags.contains("special"));
 
     // Remove duplicated agent's with repeated identifiers
     let mut unique_agents = Vec::with_capacity(agents.len());
     for agent in agents {
-        if !unique_agents.iter().any(|a: &AgentModel| a.identifier == agent.identifier) {
+        if !unique_agents
+            .iter()
+            .any(|a: &AgentModel| a.identifier == agent.identifier)
+        {
             unique_agents.push(agent);
         }
     }
-    
+
     agents = unique_agents;
 
     let mut pages = vec![];

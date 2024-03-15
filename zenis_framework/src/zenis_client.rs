@@ -130,6 +130,7 @@ impl ZenisClient {
     pub async fn create_agent_instance(
         &self,
         db: Arc<ZenisDatabase>,
+        summoner_id: Id<UserMarker>,
         channel_id: Id<ChannelMarker>,
         agent_model: AgentModel,
         pricing: AgentPricing,
@@ -157,6 +158,7 @@ impl ZenisClient {
         };
 
         let mut instance = InstanceModel::new(
+            summoner_id.get(),
             channel_id.get(),
             agent_model.clone(),
             pricing,

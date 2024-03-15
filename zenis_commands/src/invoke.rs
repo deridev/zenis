@@ -252,6 +252,7 @@ pub async fn invoke(mut ctx: CommandContext) -> anyhow::Result<()> {
         .client
         .create_agent_instance(
             ctx.db(),
+            author.id,
             channel.id,
             agent.clone(),
             agent.pricing,

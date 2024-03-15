@@ -30,6 +30,7 @@ mod invite;
 mod invoke;
 mod my_agents;
 mod officialguild;
+mod shutdown;
 mod tutorial;
 mod wallet;
 
@@ -48,6 +49,7 @@ pub static COMMANDS: Lazy<CommandMap> = Lazy::new(|| {
     register_command!(map, tutorial::TutorialCommand);
     register_command!(map, invite::InviteCommand);
     register_command!(map, explore::ExploreCommand);
+    register_command!(map, shutdown::ShutdownCommand);
     register_command!(map, my_agents::My_agentsCommand);
     register_command!(map, create_agent::Create_agentCommand);
     register_command!(map, configure_agent::Configure_agentCommand);
