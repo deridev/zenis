@@ -11,6 +11,15 @@ pub enum InstanceBrain {
 }
 
 impl InstanceBrain {
+    pub fn extra_price_per_reply(&self) -> i64 {
+        match self {
+            Self::CohereCommandR => 0,
+            Self::ClaudeHaiku => 2,
+        }
+    }
+}
+
+impl InstanceBrain {
     pub const fn name(&self) -> &'static str {
         match self {
             Self::CohereCommandR => "Command-R",

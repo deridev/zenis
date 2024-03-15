@@ -1,5 +1,4 @@
 use anyhow::{bail, Context};
-use base64::Engine;
 use std::{
     fmt::Debug,
     sync::{
@@ -7,7 +6,7 @@ use std::{
         Arc,
     },
 };
-use zenis_common::{config, Color};
+use zenis_common::{config, load_image_from_url, Color};
 use zenis_data::products::Product;
 use zenis_database::{
     agent_model::{AgentModel, AgentPricing},
@@ -28,34 +27,6 @@ use zenis_discord::{
     DiscordHttpClient, EmbedAuthor, EmbedBuilder, GuildExtension,
 };
 use zenis_payment::mp::{client::MercadoPagoClient, common::Item};
-
-async fn load_image_from_url(url: &str) -> anyhow::Result<String> {
-    let client = reqwest::Client::new();
-    let response = client.get(url).send().await?;
-
-    let mime_type = response
-        .headers()
-        .get("Content-Type")
-        .and_then(|ct| ct.to_str().ok())
-        .map(|ct| ct.to_lowercase())
-        .unwrap_or_else(|| "image/jpeg".to_owned());
-
-    let is_png = mime_type.contains("png");
-    let is_jpeg = mime_type.contains("jpeg");
-    let is_jpg = mime_type.contains("jpg");
-
-    if !is_png && !is_jpeg && !is_jpg {
-        return Err(anyhow::anyhow!("Unsupported image format: {}", mime_type));
-    }
-
-    let response_bytes = response.bytes().await?;
-
-    let engine = base64::engine::general_purpose::STANDARD;
-    let base64_encoded = engine.encode(&response_bytes);
-    let data_uri = format!("data:{};base64,{}", mime_type, base64_encoded);
-
-    Ok(data_uri)
-}
 
 #[derive(Debug)]
 pub struct ZenisClient {
@@ -85,14 +56,6 @@ impl ZenisClient {
 
     pub async fn get_guild(&self, id: Id<GuildMarker>) -> anyhow::Result<Guild> {
         Ok(self.http.guild(id).await?.model().await?)
-    }
-
-    pub async fn load_url_image(&self, url: impl ToString) -> Option<String> {
-        let Ok(image) = load_image_from_url(&url.to_string()).await else {
-            return None;
-        };
-
-        Some(image)
     }
 
     pub async fn create_transaction(
@@ -149,7 +112,7 @@ impl ZenisClient {
         let webhook = self.http.create_webhook(channel_id, &agent_model.name)?;
         let webhook = match image {
             None => webhook.await?.model().await?,
-            Some(image) => webhook.avatar(&image).await?.model().await?,
+            Some(image) => webhook.avatar(&image.to_data_uri()).await?.model().await?,
         };
 
         let Some(token) = webhook.token.clone() else {
@@ -278,7 +241,7 @@ impl ZenisClient {
         error.truncate(512);
         header.truncate(512);
         let error = format!(
-            "## Header:\n```js{header}```\n## Body:\n```xl\n{}\n```",
+            "## Header:\n```js\n{header}```\n## Body:\n```xl\n{}\n```",
             error
         );
 

@@ -2,7 +2,7 @@
 use std::time::Duration;
 
 use zenis_database::{
-    agent_model::AgentModel,
+    agent_model::{AgentModel, AgentPricing},
     instance_model::{CreditsPaymentMethod, InstanceBrain},
 };
 use zenis_discord::twilight_model::channel::message::component::ButtonStyle;
@@ -166,18 +166,20 @@ pub async fn invoke(mut ctx: CommandContext) -> anyhow::Result<()> {
     }
 
     let brain = ask_for_brain(&mut ctx).await?;
+    let mut pricing = agent.pricing;
+    pricing.price_per_reply += brain.extra_price_per_reply();
 
     let mut payment_method = CreditsPaymentMethod::UserCredits(author_id.get());
 
     if let Some(guild_id) = channel.guild_id {
-        if let Some(method) = ask_for_payment_method(&mut ctx, &agent, author_id, guild_id).await? {
+        if let Some(method) = ask_for_payment_method(&mut ctx, &agent, pricing, author_id, guild_id).await? {
             payment_method = method;
         } else {
             return Ok(());
         }
     }
 
-    let minimum_credits = agent.pricing.price_per_invocation + agent.pricing.price_per_reply;
+    let minimum_credits = pricing.price_per_invocation + pricing.price_per_reply;
 
     match payment_method {
         CreditsPaymentMethod::UserCredits(user_id) => {
@@ -191,7 +193,7 @@ pub async fn invoke(mut ctx: CommandContext) -> anyhow::Result<()> {
                 return Ok(());
             }
 
-            user_data.remove_credits(agent.pricing.price_per_invocation);
+            user_data.remove_credits(pricing.price_per_invocation);
         }
         CreditsPaymentMethod::GuildPublicCredits(guild_id) => {
             let mut guild_data = ctx.db().guilds().get_by_guild(Id::new(guild_id)).await?;
@@ -204,17 +206,17 @@ pub async fn invoke(mut ctx: CommandContext) -> anyhow::Result<()> {
                 return Ok(());
             }
 
-            guild_data.remove_public_credits(agent.pricing.price_per_invocation);
+            guild_data.remove_public_credits(pricing.price_per_invocation);
         }
     }
 
-    if agent.pricing.price_per_invocation > 0 {
+    if pricing.price_per_invocation > 0 {
         let mut creator_data = ctx
             .db()
             .users()
             .get_by_user(Id::new(agent.creator_user_id))
             .await?;
-        let profit = agent.pricing.price_per_invocation as f64 * 0.025;
+        let profit = pricing.price_per_invocation as f64 * 0.025;
         let profit = profit as i64;
         creator_data.add_credits(profit);
         ctx.db().users().save(creator_data).await.ok();
@@ -260,7 +262,7 @@ pub async fn invoke(mut ctx: CommandContext) -> anyhow::Result<()> {
             brain,
             (channel.id, author.id),
             agent.clone(),
-            agent.pricing,
+            pricing,
             payment_method,
         )
         .await;
@@ -293,6 +295,7 @@ pub async fn invoke(mut ctx: CommandContext) -> anyhow::Result<()> {
 async fn ask_for_payment_method(
     ctx: &mut CommandContext,
     agent: &AgentModel,
+    pricing: AgentPricing,
     author_id: Id<UserMarker>,
     guild_id: Id<GuildMarker>,
 ) -> anyhow::Result<Option<CreditsPaymentMethod>> {
@@ -314,10 +317,10 @@ async fn ask_for_payment_method(
             .set_style(ButtonStyle::Secondary),
     ];
 
-    let invocation_price_str = if agent.pricing.price_per_invocation > 0 {
+    let invocation_price_str = if pricing.price_per_invocation > 0 {
         format!(
             "\nPreço por invocação de **{}**: `{}₢`",
-            agent.name, agent.pricing.price_per_invocation
+            agent.name, pricing.price_per_invocation
         )
     } else {
         "".to_string()
@@ -329,7 +332,7 @@ async fn ask_for_payment_method(
             "## {} Escolha quem irá pagar o agente.\nPreço por resposta de **{}**: `{}₢`{invocation_price_str}",
             emojis::CREDIT,
             agent.name,
-            agent.pricing.price_per_reply
+            pricing.price_per_reply
         ))
         .add_inlined_field("Sua Carteira", format!("{}₢", user_data.credits))
         .add_inlined_field(
@@ -412,7 +415,7 @@ pub async fn ask_for_brain(ctx: &mut CommandContext) -> anyhow::Result<InstanceB
             name: "Seleção de Cérebro".to_string(),
             icon_url: Some(author.avatar_url()),
         })
-        .set_description(format!("## {} Escolha qual cérebro você quer no seu agente:\n\n**Command-R**: cérebro normal. Preço padrão. Menos carismático, mais rápido.\n**Haiku**: mais carismático, mais lento e mais legal.", "🧠"));
+        .set_description(format!("## {} Escolha qual cérebro você quer no seu agente:\n\n**Command-R**: cérebro normal. Preço padrão. Menos carismático, mais rápido.\n**Haiku**: mais carismático, mais lento e mais legal. 2 créditos mais caro por mensagem.", "🧠"));
 
     let message = ctx
         .send(

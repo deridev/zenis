@@ -21,4 +21,3 @@ rand = { workspace = true }
 tokio = { workspace = true }
 tokio-stream = { workspace = true }
 reqwest = { workspace = true }
-base64 = "0.22"

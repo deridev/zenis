@@ -11,4 +11,7 @@ serde = { workspace = true }
 once_cell = { workspace = true }
 image = { workspace = true }
 unidecode = { workspace = true }
+anyhow = { workspace = true }
+reqwest = { workspace = true }
+base64 = "0.22"
 lru = "0.12"
