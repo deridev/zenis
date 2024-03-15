@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
+use zenis_common::load_image_from_url;
 
 use crate::{
     brain::{Brain, BrainParameters},
@@ -8,21 +9,30 @@ use crate::{
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub struct ClaudeImage {
+    #[serde(rename = "type")]
+    pub ty: String,
+    pub media_type: String,
+    pub data: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub struct ClaudeContent {
+    #[serde(rename = "type")]
+    pub ty: String,
+    pub source: Option<ClaudeImage>,
+    pub text: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct ClaudeChatMessage {
     pub role: String,
-    pub content: String,
+    pub content: Vec<ClaudeContent>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct ClaudeChatResponse {
     pub content: Vec<ClaudeContent>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-pub struct ClaudeContent {
-    pub text: String,
-    #[serde(rename = "type")]
-    pub ty: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -57,19 +67,47 @@ impl Brain for ClaudeBrain {
         params: BrainParameters,
         messages: Vec<ChatMessage>,
     ) -> anyhow::Result<ChatResponse> {
+        let mut claude_messages = Vec::with_capacity(messages.len());
+        let len = messages.len();
+
+        for (index, message) in messages.iter().enumerate() {
+            let mut contents = vec![];
+            if let Some(image_url) = &message.image_url {
+                if index == len - 1 {
+                    let image = load_image_from_url(image_url).await?;
+                    contents.push(ClaudeContent {
+                        ty: "image".to_string(),
+                        source: Some(ClaudeImage {
+                            ty: "image".to_string(),
+                            media_type: image.mime_type,
+                            data: image.data,
+                        }),
+                        text: None,
+                    });
+                }
+            }
+
+            contents.push(ClaudeContent {
+                ty: "text".to_string(),
+                text: Some(message.content.clone()),
+                source: None,
+            });
+
+            let claude_message = ClaudeChatMessage {
+                role: match message.role {
+                    Role::User => "user".to_string(),
+                    Role::Assistant => "assistant".to_string(),
+                },
+                content: contents,
+            };
+
+            claude_messages.push(claude_message);
+        }
+
         let request = ClaudeRequest {
             model: params.model,
             max_tokens: params.max_tokens,
-            messages: messages
-                .iter()
-                .map(|m| ClaudeChatMessage {
-                    role: match m.role {
-                        Role::User => "user".to_string(),
-                        Role::Assistant => "assistant".to_string(),
-                    },
-                    content: m.content.clone(),
-                })
-                .collect(),
+            messages: claude_messages,
             system: format!(
                 "{}\n<{}>",
                 self.system_prompt(messages.len()),
@@ -91,16 +129,20 @@ impl Brain for ClaudeBrain {
 
         if params.strip_italic_actions {
             response.content.iter_mut().for_each(|reply| {
-                reply.text = remove_italic_actions(&reply.text);
+                reply.text = reply.text.as_ref().map(|t| remove_italic_actions(t));
             });
         }
 
         response.content.iter_mut().for_each(|reply| {
-            let content = reply.text.to_uppercase().trim().to_owned();
-            if content.contains("{AWAIT}") {
-                reply.text = "{AWAIT}".to_string();
-            } else if content.contains("{EXIT}") {
-                reply.text = "{EXIT}".to_string();
+            let Some(content) = &mut reply.text else {
+                return;
+            };
+
+            let text = content.to_uppercase().trim().to_owned();
+            if text.contains("{AWAIT}") {
+                *content = "{AWAIT}".to_string();
+            } else if text.contains("{EXIT}") {
+                *content = "{EXIT}".to_string();
             }
         });
 
@@ -110,8 +152,9 @@ impl Brain for ClaudeBrain {
                 content: response
                     .content
                     .first()
-                    .map(|r| r.text.clone())
+                    .map(|r| r.text.clone().unwrap_or_default())
                     .unwrap_or_default(),
+                image_url: None,
             },
         })
     }

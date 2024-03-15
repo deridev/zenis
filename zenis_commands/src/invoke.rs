@@ -172,7 +172,9 @@ pub async fn invoke(mut ctx: CommandContext) -> anyhow::Result<()> {
     let mut payment_method = CreditsPaymentMethod::UserCredits(author_id.get());
 
     if let Some(guild_id) = channel.guild_id {
-        if let Some(method) = ask_for_payment_method(&mut ctx, &agent, pricing, author_id, guild_id).await? {
+        if let Some(method) =
+            ask_for_payment_method(&mut ctx, &agent, pricing, author_id, guild_id).await?
+        {
             payment_method = method;
         } else {
             return Ok(());
@@ -415,7 +417,7 @@ pub async fn ask_for_brain(ctx: &mut CommandContext) -> anyhow::Result<InstanceB
             name: "Seleção de Cérebro".to_string(),
             icon_url: Some(author.avatar_url()),
         })
-        .set_description(format!("## {} Escolha qual cérebro você quer no seu agente:\n\n**Command-R**: cérebro normal. Preço padrão. Menos carismático, mais rápido.\n**Haiku**: mais carismático, mais lento e mais legal. 2 créditos mais caro por mensagem.", "🧠"));
+        .set_description(format!("## {} Escolha qual cérebro você quer no seu agente:\n\n**Command-R**: cérebro normal. Preço padrão. Menos carismático, mais rápido.\n**Haiku**: mais carismático, mais lento e consegue ver imagens. 2 créditos mais caro por mensagem, 3 créditos extra pra cada imagem.", "🧠"));
 
     let message = ctx
         .send(

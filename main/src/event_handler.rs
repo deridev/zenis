@@ -93,6 +93,8 @@ impl EventHandler {
             return Ok(());
         }
 
+        let image_url = message.attachments.first().map(|a| a.url.clone());
+
         let author = message.author.clone();
         let mut instances = self
             .database
@@ -116,6 +118,7 @@ impl EventHandler {
                     message.author.display_name(),
                     message.author.name
                 ),
+                image_url: image_url.clone(),
             });
 
             instance.is_awaiting_new_messages = false;

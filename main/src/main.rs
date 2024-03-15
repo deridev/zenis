@@ -234,13 +234,18 @@ async fn process_instance(
     let messages = instance
         .history
         .iter()
-        .map(|m| ChatMessage {
-            role: if m.is_user {
-                Role::User
-            } else {
-                Role::Assistant
-            },
-            content: m.content.clone(),
+        .enumerate()
+        .map(|(index, m)| {
+            let is_last = index == instance.history.len() - 1;
+            ChatMessage {
+                role: if m.is_user {
+                    Role::User
+                } else {
+                    Role::Assistant
+                },
+                content: m.content.clone(),
+                image_url: if is_last { m.image_url.clone() } else { None },
+            }
         })
         .collect();
 

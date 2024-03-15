@@ -38,6 +38,7 @@ pub enum CreditsPaymentMethod {
 pub struct InstanceMessage {
     pub is_user: bool,
     pub content: String,
+    pub image_url: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -131,12 +132,14 @@ impl InstanceModel {
             self.push_message(InstanceMessage {
                 is_user: true,
                 content: format!("<Se apresente, {}>", self.agent_name),
+                image_url: None,
             });
         }
 
         let introduction_message = InstanceMessage {
             is_user: false,
             content: introduction_message.to_string(),
+            image_url: None,
         };
 
         self.push_message(introduction_message.clone());
@@ -144,6 +147,7 @@ impl InstanceModel {
         InstanceMessage {
             is_user: false,
             content: introduction_message.content,
+            image_url: None,
         }
     }
 }

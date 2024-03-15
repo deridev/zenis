@@ -10,6 +10,7 @@ pub enum Role {
 pub struct ChatMessage {
     pub role: Role,
     pub content: String,
+    pub image_url: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -22,6 +23,7 @@ impl From<ChatMessage> for InstanceMessage {
         Self {
             is_user: value.role == Role::User,
             content: value.content,
+            image_url: value.image_url,
         }
     }
 }

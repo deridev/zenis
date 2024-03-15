@@ -117,6 +117,7 @@ impl Brain for CohereBrain {
             message: ChatMessage {
                 role: Role::Assistant,
                 content: response.text,
+                image_url: None,
             },
         })
     }
