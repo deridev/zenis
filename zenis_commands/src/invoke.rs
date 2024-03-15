@@ -249,7 +249,8 @@ pub async fn invoke(mut ctx: CommandContext) -> anyhow::Result<()> {
         .set_description(format!(
             "## {} invocado neste chat!\nEnvie mensagens e o agente responderá.",
             agent.name
-        ));
+        ))
+        .add_footer_text(format!("Cérebro: {}", brain.name()));
 
     if let Some(image_url) = &agent.agent_url_image {
         embed = embed.set_thumbnail(image_url);
