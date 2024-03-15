@@ -166,7 +166,9 @@ impl Brain for ClaudeBrain {
                     .content
                     .first()
                     .map(|r| r.text.clone().unwrap_or_default())
-                    .unwrap_or_default().trim().to_owned(),
+                    .unwrap_or_default()
+                    .trim()
+                    .to_owned(),
                 image_url: None,
             },
         })

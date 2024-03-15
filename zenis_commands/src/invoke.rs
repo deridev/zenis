@@ -474,7 +474,11 @@ pub async fn ask_for_brain(ctx: &mut CommandContext) -> anyhow::Result<InstanceB
     ctx.update_message(Response::default().set_components(make_multiple_rows(buttons)))
         .await?;
 
-    ctx.client.http.delete_message(message.channel_id, message.id).await.ok();
+    ctx.client
+        .http
+        .delete_message(message.channel_id, message.id)
+        .await
+        .ok();
 
     match data.custom_id.as_str() {
         "cohere_command_r" => Ok(InstanceBrain::CohereCommandR),

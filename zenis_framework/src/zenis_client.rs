@@ -10,7 +10,7 @@ use zenis_common::{config, load_image_from_url, Color};
 use zenis_data::products::Product;
 use zenis_database::{
     agent_model::{AgentModel, AgentPricing},
-    instance_model::{CreditsPaymentMethod, InstanceBrain, InstanceModel},
+    instance_model::{CreditsPaymentMethod, InstanceBrain, InstanceMessage, InstanceModel},
     transaction::{CreditDestination, TransactionModel},
     ZenisDatabase,
 };
@@ -183,6 +183,20 @@ impl ZenisClient {
                 .embeds(embeds)
             {
                 create_message.await.ok();
+            }
+
+            let channel_instances = db
+                .instances()
+                .all_actives_in_channel(instance.channel_id)
+                .await?;
+            for mut channel_instance in channel_instances {
+                channel_instance.is_awaiting_new_messages = false;
+                channel_instance.push_message(InstanceMessage {
+                    is_user: true,
+                    content: format!("<{} saiu do chat. Motivo: {}>", agent.name, exit_reason),
+                    image_url: None,
+                });
+                db.instances().save(channel_instance).await?;
             }
         }
         Ok(())
