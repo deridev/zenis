@@ -5,6 +5,21 @@ use serde::{Deserialize, Serialize};
 use crate::agent_model::{AgentModel, AgentPricing};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub enum InstanceBrain {
+    CohereCommandR,
+    ClaudeHaiku,
+}
+
+impl InstanceBrain {
+    pub const fn name(&self) -> &'static str {
+        match self {
+            Self::CohereCommandR => "Command-R",
+            Self::ClaudeHaiku => "Haiku",
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum CreditsPaymentMethod {
     UserCredits(u64),
     GuildPublicCredits(u64),
@@ -26,6 +41,7 @@ pub struct InstanceModel {
     pub agent_name: String,
     pub agent_description: String,
     pub pricing: AgentPricing,
+    pub brain: InstanceBrain,
 
     pub webhook_id: u64,
     pub webhook_token: String,
@@ -44,8 +60,8 @@ pub struct InstanceModel {
 
 impl InstanceModel {
     pub fn new(
-        summoner_id: u64,
-        channel_id: u64,
+        agent_brain: InstanceBrain,
+        (channel_id, summoner_id): (u64, u64),
         agent_model: AgentModel,
         pricing: AgentPricing,
         (webhook_id, webhook_token): (u64, String),
@@ -56,6 +72,7 @@ impl InstanceModel {
             channel_id,
             summoner_id,
             pricing,
+            brain: agent_brain,
             agent_identifier: agent_model.identifier.clone(),
             agent_name: agent_model.name.clone(),
             agent_description: agent_model.description.clone(),
@@ -80,7 +97,8 @@ impl InstanceModel {
         let instance_message: InstanceMessage = message.into();
 
         if let Some(last_message) = self.history.last_mut() {
-            if last_message.is_user && instance_message.is_user && last_message.content.len() < 400 {
+            if last_message.is_user && instance_message.is_user && last_message.content.len() < 400
+            {
                 last_message
                     .content
                     .push_str(&format!("\n{}", instance_message.content));

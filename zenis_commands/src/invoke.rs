@@ -1,7 +1,10 @@
 #![allow(clippy::len_zero)]
 use std::time::Duration;
 
-use zenis_database::{agent_model::AgentModel, instance_model::CreditsPaymentMethod};
+use zenis_database::{
+    agent_model::AgentModel,
+    instance_model::{CreditsPaymentMethod, InstanceBrain},
+};
 use zenis_discord::twilight_model::channel::message::component::ButtonStyle;
 use zenis_framework::{util::make_multiple_rows, watcher::WatcherOptions};
 
@@ -162,6 +165,8 @@ pub async fn invoke(mut ctx: CommandContext) -> anyhow::Result<()> {
         return Ok(());
     }
 
+    let brain = ask_for_brain(&mut ctx).await?;
+
     let mut payment_method = CreditsPaymentMethod::UserCredits(author_id.get());
 
     if let Some(guild_id) = channel.guild_id {
@@ -252,8 +257,8 @@ pub async fn invoke(mut ctx: CommandContext) -> anyhow::Result<()> {
         .client
         .create_agent_instance(
             ctx.db(),
-            author.id,
-            channel.id,
+            brain,
+            (channel.id, author.id),
             agent.clone(),
             agent.pricing,
             payment_method,
@@ -385,4 +390,76 @@ async fn ask_for_payment_method(
     }
 
     Ok(None)
+}
+
+pub async fn ask_for_brain(ctx: &mut CommandContext) -> anyhow::Result<InstanceBrain> {
+    let author = ctx.author().await?;
+
+    let buttons = vec![
+        ButtonBuilder::new()
+            .set_custom_id("cohere_command_r")
+            .set_label("Command-R")
+            .set_style(ButtonStyle::Secondary),
+        ButtonBuilder::new()
+            .set_custom_id("claude_haiku")
+            .set_label("Haiku")
+            .set_style(ButtonStyle::Secondary),
+    ];
+
+    let embed = EmbedBuilder::new_common()
+        .set_color(Color::LIGHT_RED)
+        .set_author(EmbedAuthor {
+            name: "Seleção de Cérebro".to_string(),
+            icon_url: Some(author.avatar_url()),
+        })
+        .set_description(format!("## {} Escolha qual cérebro você quer no seu agente:\n\n**Command-R**: cérebro normal. Preço padrão. Menos carismático, mais rápido.\n**Haiku**: mais carismático, mais lento e mais legal.", "🧠"));
+
+    let message = ctx
+        .send(
+            Response::new_user_reply(&author, "escolha o cérebro do seu agente:")
+                .add_emoji_prefix("🧠")
+                .add_embed(embed)
+                .set_components(make_multiple_rows(buttons.clone())),
+        )
+        .await?;
+
+    let Ok(Some(interaction)) = ctx
+        .watcher
+        .await_single_component(
+            message.id,
+            move |interaction| interaction.author_id() == Some(author.id),
+            WatcherOptions {
+                timeout: Duration::from_secs(60),
+            },
+        )
+        .await
+    else {
+        return Ok(InstanceBrain::ClaudeHaiku);
+    };
+
+    let data = interaction.parse_message_component_data()?;
+
+    let buttons = buttons
+        .iter()
+        .map(|b| {
+            let id = b.data.custom_id.as_ref();
+            b.clone()
+                .set_disabled(true)
+                .set_style(if id == Some(&data.custom_id) {
+                    ButtonStyle::Success
+                } else {
+                    ButtonStyle::Secondary
+                })
+        })
+        .collect::<Vec<_>>();
+
+    let mut ctx = CommandContext::from_with_interaction(ctx, Box::new(interaction));
+    ctx.update_message(Response::default().set_components(make_multiple_rows(buttons)))
+        .await?;
+
+    match data.custom_id.as_str() {
+        "cohere_command_r" => Ok(InstanceBrain::CohereCommandR),
+        "claude_haiku" => Ok(InstanceBrain::ClaudeHaiku),
+        _ => Ok(InstanceBrain::ClaudeHaiku),
+    }
 }

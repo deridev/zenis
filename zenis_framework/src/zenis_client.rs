@@ -11,7 +11,7 @@ use zenis_common::{config, Color};
 use zenis_data::products::Product;
 use zenis_database::{
     agent_model::{AgentModel, AgentPricing},
-    instance_model::{CreditsPaymentMethod, InstanceModel},
+    instance_model::{CreditsPaymentMethod, InstanceBrain, InstanceModel},
     transaction::{CreditDestination, TransactionModel},
     ZenisDatabase,
 };
@@ -130,8 +130,8 @@ impl ZenisClient {
     pub async fn create_agent_instance(
         &self,
         db: Arc<ZenisDatabase>,
-        summoner_id: Id<UserMarker>,
-        channel_id: Id<ChannelMarker>,
+        brain: InstanceBrain,
+        (channel_id, summoner_id): (Id<ChannelMarker>, Id<UserMarker>),
         agent_model: AgentModel,
         pricing: AgentPricing,
         payment_method: CreditsPaymentMethod,
@@ -158,8 +158,8 @@ impl ZenisClient {
         };
 
         let mut instance = InstanceModel::new(
-            summoner_id.get(),
-            channel_id.get(),
+            brain,
+            (channel_id.get(), summoner_id.get()),
             agent_model.clone(),
             pricing,
             (

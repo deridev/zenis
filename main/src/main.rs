@@ -10,7 +10,6 @@ use warp::{reply::Response, Filter};
 use zenis_ai::{
     common::{ChatMessage, Role},
     util::process_instance_message_queue,
-    BrainType,
 };
 use zenis_common::{config, Color};
 use zenis_data::products::PRODUCTS;
@@ -172,7 +171,7 @@ async fn main() {
                 let http = client.http.clone();
                 let instances = db.instances().all_actives().await.unwrap_or_default();
                 for instance in instances {
-                    process_instance(http.clone(), db.clone(), instance.clone())
+                    process_instance(http.clone(), client.clone(), db.clone(), instance.clone())
                         .await
                         .ok();
 
@@ -217,6 +216,7 @@ async fn main() {
 
 async fn process_instance(
     http: Arc<DiscordHttpClient>,
+    client: Arc<ZenisClient>,
     database: Arc<ZenisDatabase>,
     mut instance: InstanceModel,
 ) -> anyhow::Result<()> {
@@ -244,13 +244,25 @@ async fn process_instance(
         })
         .collect();
 
-    let Ok(response) =
-        process_instance_message_queue(&mut instance, BrainType::Cohere, messages, config::DEBUG)
-            .await
-    else {
-        instance.exit_reason = Some("Erro interno".to_string());
-        database.instances().save(instance).await?;
-        return Ok(());
+    let response = process_instance_message_queue(&mut instance, messages, config::DEBUG).await;
+
+    let response = match response {
+        Ok(response) => response,
+        Err(e) => {
+            client
+                .emit_error_hook(
+                    format!(
+                        "Internal agent error. Agent ID: {}",
+                        instance.agent_identifier
+                    ),
+                    e,
+                )
+                .await?;
+            instance.exit_reason =
+                Some("Erro interno. Desenvolvedor foi contactado sobre o problema.".to_string());
+            database.instances().save(instance).await?;
+            return Ok(());
+        }
     };
 
     if let Ok(Some(mut agent)) = database

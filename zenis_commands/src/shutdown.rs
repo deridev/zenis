@@ -146,7 +146,11 @@ async fn shutdown_instance(
     instance.exit_reason = Some(format!("Desligado por {}", author.display_name()));
     ctx.db().instances().save(instance).await?;
 
-    ctx.send(Response::new_user_reply(author, "agente desligado com sucesso!").add_emoji_prefix(emojis::SUCCESS)).await?;
+    ctx.send(
+        Response::new_user_reply(author, "agente desligado com sucesso!")
+            .add_emoji_prefix(emojis::SUCCESS),
+    )
+    .await?;
 
     Ok(())
 }
