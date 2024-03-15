@@ -225,7 +225,7 @@ async fn process_instance(
     }
 
     let diff = Utc::now().timestamp() - instance.last_sent_message_timestamp;
-    if diff < 8 {
+    if diff < 10 {
         return Ok(());
     }
 
