@@ -230,6 +230,8 @@ async fn process_instance(
     }
 
     instance.is_awaiting_new_messages = true;
+    
+    let mut image_processed = false;
 
     let messages = instance
         .history
@@ -244,7 +246,15 @@ async fn process_instance(
                     Role::Assistant
                 },
                 content: m.content.clone(),
-                image_url: if is_last { m.image_url.clone() } else { None },
+                image_url: if is_last { 
+                    if m.image_url.is_some() && !image_processed {
+                        image_processed = true;
+                    }
+
+                    m.image_url.clone() 
+                } else { 
+                    None 
+                },
             }
         })
         .collect();
@@ -298,7 +308,7 @@ async fn process_instance(
         .await
         .ok();
 
-    process_instance_credits_payment(&mut instance, database.clone()).await?;
+    process_instance_credits_payment(&mut instance, database.clone(), image_processed).await?;
     database.instances().save(instance).await?;
 
     Ok(())
@@ -307,9 +317,10 @@ async fn process_instance(
 async fn process_instance_credits_payment(
     instance: &mut InstanceModel,
     database: Arc<ZenisDatabase>,
+    image_processed: bool,
 ) -> anyhow::Result<()> {
     let payment_method = instance.payment_method;
-    let price_per_reply = instance.pricing.price_per_reply;
+    let price_per_reply = instance.pricing.price_per_reply + if image_processed { 3 } else { 0 };
 
     match payment_method {
         CreditsPaymentMethod::UserCredits(user_id) => {
