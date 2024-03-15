@@ -321,7 +321,7 @@ async fn process_instance_credits_payment(
     image_processed: bool,
 ) -> anyhow::Result<()> {
     let payment_method = instance.payment_method;
-    let price_per_reply = instance.pricing.price_per_reply + if image_processed { 3 } else { 0 };
+    let price_per_reply = instance.pricing.price_per_reply + if image_processed { 5 } else { 0 };
 
     match payment_method {
         CreditsPaymentMethod::UserCredits(user_id) => {

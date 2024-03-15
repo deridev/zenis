@@ -58,7 +58,7 @@ impl Brain for ClaudeBrain {
         BrainParameters {
             debug: true,
             model: "claude-3-sonnet-20240229".to_string(),
-            max_tokens: 512,
+            max_tokens: 300,
             system_prompt: String::new(),
             strip_italic_actions: true,
         }
@@ -166,7 +166,7 @@ impl Brain for ClaudeBrain {
                     .content
                     .first()
                     .map(|r| r.text.clone().unwrap_or_default())
-                    .unwrap_or_default(),
+                    .unwrap_or_default().trim().to_owned(),
                 image_url: None,
             },
         })

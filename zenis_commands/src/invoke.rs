@@ -429,7 +429,7 @@ pub async fn ask_for_brain(ctx: &mut CommandContext) -> anyhow::Result<InstanceB
             name: "Seleção de Cérebro".to_string(),
             icon_url: Some(author.avatar_url()),
         })
-        .set_description(format!("## {} Escolha qual cérebro você quer no seu agente:\n\n⚡ **Command-R**: cérebro normal. Preço padrão. Menos carismático, mais rápido.\n\n💪 **Haiku**: mais carismático, mais lento e consegue ver imagens. 2 créditos mais caro por mensagem, 3 créditos extra pra cada imagem.", "🧠"));
+        .set_description(format!("## {} Escolha qual cérebro você quer no seu agente:\n\n⚡ **Command-R**: cérebro normal. Preço padrão. Menos carismático, mais rápido.\n\n💪 **Haiku**: mais carismático, mais lento e consegue ver imagens. 2 créditos mais caro por mensagem, 5 créditos extra pra cada imagem.", "🧠"));
 
     let message = ctx
         .send(

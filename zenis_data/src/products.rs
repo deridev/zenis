@@ -23,7 +23,7 @@ pub const PRODUCTS: &[Product] = &[
         description: DEFAULT_DESCRIPTION,
         price: 9.0,
         amount_of_credits: 500,
-        discount: 0.5,
+        discount: 0.25,
     },
     Product {
         id: "1000_credits",
@@ -31,7 +31,7 @@ pub const PRODUCTS: &[Product] = &[
         description: DEFAULT_DESCRIPTION,
         price: 17.0,
         amount_of_credits: 1000,
-        discount: 0.5,
+        discount: 0.25,
     },
     Product {
         id: "2000_credits",
@@ -39,7 +39,7 @@ pub const PRODUCTS: &[Product] = &[
         description: DEFAULT_DESCRIPTION,
         price: 30.0,
         amount_of_credits: 2000,
-        discount: 0.5,
+        discount: 0.25,
     },
     Product {
         id: "5000_credits",
@@ -47,7 +47,7 @@ pub const PRODUCTS: &[Product] = &[
         description: DEFAULT_DESCRIPTION,
         price: 70.0,
         amount_of_credits: 5000,
-        discount: 0.5,
+        discount: 0.25,
     },
     Product {
         id: "10000_credits",
@@ -55,7 +55,7 @@ pub const PRODUCTS: &[Product] = &[
         description: DEFAULT_DESCRIPTION,
         price: 130.0,
         amount_of_credits: 10000,
-        discount: 0.5,
+        discount: 0.25,
     },
 ];
 
