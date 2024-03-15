@@ -107,7 +107,7 @@ impl InstanceModel {
         let instance_message: InstanceMessage = message.into();
 
         if let Some(last_message) = self.history.last_mut() {
-            if last_message.is_user && instance_message.is_user && last_message.content.len() < 400
+            if last_message.is_user && instance_message.is_user
             {
                 last_message
                     .content
