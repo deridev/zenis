@@ -47,7 +47,7 @@ impl Brain for CohereBrain {
         BrainParameters {
             debug: true,
             model: "command-r".to_string(),
-            max_tokens: 512,
+            max_tokens: 200,
             system_prompt: String::new(),
             strip_italic_actions: true,
         }

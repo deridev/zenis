@@ -57,8 +57,8 @@ impl Brain for ClaudeBrain {
     fn default_parameters(&self) -> BrainParameters {
         BrainParameters {
             debug: true,
-            model: "claude-3-sonnet-20240229".to_string(),
-            max_tokens: 300,
+            model: "claude-3-haiku-20240307".to_string(),
+            max_tokens: 200,
             system_prompt: String::new(),
             strip_italic_actions: true,
         }
