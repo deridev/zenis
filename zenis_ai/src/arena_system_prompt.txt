@@ -15,7 +15,7 @@ And should reply with:
    "tags": [Tag]
    "output_message": string,
    "consequences": string
-   "winner"?: string|undefined,
+   "winner": string|null,
 }
 
 If a field is undefined, omit it. Don't include undefined fields.

@@ -60,6 +60,8 @@ pub struct ArenaOutput {
     pub tags: Vec<ArenaTag>,
     pub output_message: String,
     pub consequences: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default = "Option::default")]
     pub winner: Option<String>,
 }
 
