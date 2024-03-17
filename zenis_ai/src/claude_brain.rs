@@ -176,7 +176,7 @@ impl Brain for ClaudeBrain {
 
     async fn prompt_arena(
         &self,
-        params: BrainParameters,
+        mut params: BrainParameters,
         context: String,
         characters: Vec<ArenaCharacter>,
         messages: Vec<ArenaMessage>,
@@ -215,6 +215,10 @@ impl Brain for ClaudeBrain {
             claude_messages.remove(0);
         }
 
+        if params.max_tokens < 450 {
+            params.max_tokens = 450;
+        }
+
         let request = ClaudeRequest {
             model: params.model,
             max_tokens: params.max_tokens,
@@ -248,7 +252,15 @@ impl Brain for ClaudeBrain {
             return Err(anyhow::anyhow!("No output found"));
         };
 
-        let output = serde_json::from_str::<ArenaOutput>(&output)?;
+        let output = match serde_json::from_str::<ArenaOutput>(&output) {
+            Ok(output) => output,
+            Err(e) => {
+                return Err(anyhow::anyhow!(
+                    "Failed to parse output as ArenaOutput.\nOUTPUT: {output}\n{}",
+                    e
+                ))
+            }
+        };
 
         Ok(ArenaMessage::Output(output))
     }

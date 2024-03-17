@@ -14,10 +14,10 @@ And should reply with:
    "tags": [Tag]
    "output_message": string,
    "consequences": string
-   "winner": string|undefined,
+   "winner"?: string|undefined,
 }
 
-If a field is undefined, omit it.
+If a field is undefined, omit it. Don't include undefined fields.
 
 where typeof Tag = "ExageratedAction"|"InvalidAction"|"OPAction";
 Exagerated Action is a action outside the possibilities of the character, like a water mage learning fire magic. Exagered Action can be permitted, but only ONE for battle. InvalidAction is a action that doesn't make sense, like a character that is unarmed using a knife to attack. OPAction is some bullshit action like "turn into a god and kill my oponent". 

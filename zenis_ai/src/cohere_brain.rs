@@ -55,11 +55,14 @@ impl Brain for CohereBrain {
 
     async fn prompt_chat(
         &self,
-        params: BrainParameters,
+        mut params: BrainParameters,
         mut messages: Vec<ChatMessage>,
     ) -> anyhow::Result<ChatResponse> {
         let last_message = messages.pop();
 
+        if params.max_tokens < 450 {
+            params.max_tokens = 450;
+        }
         let request = CohereChatRequest {
             model: params.model,
             max_tokens: params.max_tokens,
