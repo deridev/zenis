@@ -20,6 +20,7 @@ macro_rules! register_command {
     }};
 }
 
+mod arena;
 mod buy;
 mod common;
 mod configure_agent;
@@ -54,6 +55,7 @@ pub static COMMANDS: Lazy<CommandMap> = Lazy::new(|| {
     register_command!(map, create_agent::Create_agentCommand);
     register_command!(map, configure_agent::Configure_agentCommand);
     register_command!(map, officialguild::OfficialguildCommand);
+    register_command!(map, arena::ArenaCommand);
 
     register_command!(map, adm::AdmCommand);
 

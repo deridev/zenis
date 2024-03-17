@@ -248,6 +248,10 @@ impl ZenisClient {
         mut header: String,
         error: anyhow::Error,
     ) -> anyhow::Result<()> {
+        if config::DEBUG {
+            return Ok(());
+        }
+
         let hook_id = std::env::var("ERROR_HOOK_ID")?.parse::<u64>()?;
         let hook_token = std::env::var("ERROR_HOOK_TOKEN")?;
 
@@ -285,20 +289,28 @@ impl ZenisClient {
 
         let user = self.get_user(user_id).await?;
 
-        let embed = EmbedBuilder::new_common()
-            .set_author_to_user(&user)
-            .set_color(if success { Color::GREEN } else { Color::RED })
-            .set_description(format!(
-                "## Pagamento!\n**Sucesso**: `{}`\n**Valor**: `R$ {:.2?}`\n\n**Produto:** `{}`",
+        let embed =
+            EmbedBuilder::new_common()
+                .set_author_to_user(&user)
+                .set_color(if config::DEBUG {
+                    Color::YELLOW
+                } else if success {
+                    Color::GREEN
+                } else {
+                    Color::RED
+                })
+                .set_description(format!(
+                "## Pagamento!{}\n**Sucesso**: `{}`\n**Valor**: `R$ {:.2?}`\n\n**Produto:** `{}`",
+                if config::DEBUG { " (TESTES - NÃO HOUVE PAGAMENTO REAL.)" } else { "" },
                 if success { "✅" } else { "❌" },
                 amount,
                 product.name
             ))
-            .add_footer_text(format!(
-                "ID do usuário: {}\nID do payment: {}",
-                user.id, payment_id
-            ))
-            .build();
+                .add_footer_text(format!(
+                    "ID do usuário: {}\nID do payment: {}",
+                    user.id, payment_id
+                ))
+                .build();
 
         self.http
             .execute_webhook(Id::new(hook_id), &hook_token)
@@ -321,8 +333,11 @@ impl ZenisClient {
             .add_inlined_field(
                 "Informações",
                 format!(
-                    "**Nome**: `{}`\n**ID**: `{}`\n**Enviado por**: `{}`",
-                    agent.name, agent.identifier, agent.creator_user_id
+                    "{}**Nome**: `{}`\n**ID**: `{}`\n**Enviado por**: `{}`",
+                    if config::DEBUG { "(DEBUG) " } else { "" },
+                    agent.name,
+                    agent.identifier,
+                    agent.creator_user_id
                 ),
             )
             .add_inlined_field(
@@ -335,8 +350,10 @@ impl ZenisClient {
             )
             .add_not_inlined_field("📄 Descrição", format!("```{}```", agent.description))
             .add_footer_text(format!(
-                "ACEITAR: /adm cmd: accept {}\nRECUSAR: /adm cmd: reject {} <motivo>",
-                agent.identifier, agent.identifier
+                "ACEITAR: /adm cmd: accept {}\nRECUSAR: /adm cmd: reject {} <motivo>{}",
+                agent.identifier,
+                agent.identifier,
+                if config::DEBUG { " (DEBUG)" } else { "" }
             ));
 
         self.http
@@ -350,6 +367,10 @@ impl ZenisClient {
         &self,
         guild_create: Box<GuildCreate>,
     ) -> anyhow::Result<()> {
+        if config::DEBUG {
+            return Ok(());
+        }
+
         let hook_id = std::env::var("GUILD_HOOK_ID")?.parse::<u64>()?;
         let hook_token = std::env::var("GUILD_HOOK_TOKEN")?;
 

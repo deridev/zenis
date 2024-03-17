@@ -3,8 +3,8 @@ use serde::{Deserialize, Serialize};
 use zenis_common::load_image_from_url;
 
 use crate::{
-    brain::{Brain, BrainParameters},
-    common::{ChatMessage, ChatResponse, Role},
+    brain::{Brain, BrainParameters, ARENA_CONTEXT_GENERATION_PROMPT},
+    common::{ArenaCharacter, ArenaMessage, ArenaOutput, ChatMessage, ChatResponse, Role},
     util::remove_italic_actions,
 };
 
@@ -58,7 +58,7 @@ impl Brain for ClaudeBrain {
         BrainParameters {
             debug: true,
             model: "claude-3-haiku-20240307".to_string(),
-            max_tokens: 200,
+            max_tokens: 300,
             system_prompt: String::new(),
             strip_italic_actions: true,
         }
@@ -172,5 +172,140 @@ impl Brain for ClaudeBrain {
                 image_url: None,
             },
         })
+    }
+
+    async fn prompt_arena(
+        &self,
+        params: BrainParameters,
+        context: String,
+        characters: Vec<ArenaCharacter>,
+        messages: Vec<ArenaMessage>,
+    ) -> anyhow::Result<ArenaMessage> {
+        let mut claude_messages = Vec::with_capacity(messages.len());
+        for message in messages {
+            claude_messages.push(match message {
+                ArenaMessage::Input(input) => {
+                    let json = serde_json::to_string_pretty(&input)?;
+
+                    ClaudeChatMessage {
+                        role: "user".to_string(),
+                        content: vec![ClaudeContent {
+                            ty: "text".to_string(),
+                            text: Some(json.to_string()),
+                            source: None,
+                        }],
+                    }
+                }
+                ArenaMessage::Output(output) => {
+                    let json = serde_json::to_string_pretty(&output)?;
+
+                    ClaudeChatMessage {
+                        role: "assistant".to_string(),
+                        content: vec![ClaudeContent {
+                            ty: "text".to_string(),
+                            text: Some(json.to_string()),
+                            source: None,
+                        }],
+                    }
+                }
+            });
+        }
+
+        while claude_messages.first().is_some_and(|m| m.role != "user") {
+            claude_messages.remove(0);
+        }
+
+        let request = ClaudeRequest {
+            model: params.model,
+            max_tokens: params.max_tokens,
+            system: self.make_arena_system_prompt(claude_messages.len(), context, &characters),
+            messages: claude_messages,
+        };
+
+        let response = self
+            .http_client()
+            .post("https://api.anthropic.com/v1/messages")
+            .header("x-api-key", self.api_key(params.debug))
+            .header("content-type", "application/json")
+            .header("Anthropic-Version", "2023-06-01")
+            .json(&request)
+            .send()
+            .await?;
+
+        let status = response.status();
+        if !status.is_success() {
+            let mut text = response.text().await?;
+            text.truncate(1800);
+            return Err(anyhow::anyhow!("Status code: {}\n{:?}", status, text));
+        }
+
+        let response: ClaudeChatResponse = response.json().await?;
+        let Some(output) = response
+            .content
+            .first()
+            .map(|r| r.text.clone().unwrap_or_default())
+        else {
+            return Err(anyhow::anyhow!("No output found"));
+        };
+
+        let output = serde_json::from_str::<ArenaOutput>(&output)?;
+
+        Ok(ArenaMessage::Output(output))
+    }
+
+    async fn generate_context(&self, fighters: Vec<ArenaCharacter>) -> anyhow::Result<String> {
+        let mut fighter_strings = vec![];
+
+        for fighter in fighters {
+            fighter_strings.push(format!(
+                "   {{ \"name\": \"{}\", \"description\": \"{}\" }}",
+                fighter.name, fighter.description
+            ));
+        }
+
+        let params = self.default_parameters();
+
+        let request = ClaudeRequest {
+            model: params.model,
+            max_tokens: params.max_tokens,
+            messages: vec![ClaudeChatMessage {
+                role: "user".to_string(),
+                content: vec![ClaudeContent {
+                    ty: "text".to_string(),
+                    text: Some(format!("[\n{}\n]", fighter_strings.join(",\n"))),
+                    source: None,
+                }],
+            }],
+            system: ARENA_CONTEXT_GENERATION_PROMPT.to_owned(),
+        };
+
+        let response = self
+            .http_client()
+            .post("https://api.anthropic.com/v1/messages")
+            .header("x-api-key", self.api_key(params.debug))
+            .header("content-type", "application/json")
+            .header("anthropic-version", "2023-06-01")
+            .json(&request)
+            .send()
+            .await?;
+
+        let status = response.status();
+        if !status.is_success() {
+            let mut text = response.text().await?;
+            text.truncate(1800);
+            return Err(anyhow::anyhow!("Status code: {}\n{:?}", status, text));
+        }
+
+        let response: ClaudeChatResponse = response.json().await?;
+
+        let Some(output) = response
+            .content
+            .first()
+            .map(|r| r.text.clone().unwrap_or_default())
+        else {
+            return Err(anyhow::anyhow!("No output found"));
+        };
+
+        Ok(output)
     }
 }

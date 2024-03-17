@@ -17,9 +17,7 @@ impl InstanceBrain {
             Self::ClaudeHaiku => 2,
         }
     }
-}
 
-impl InstanceBrain {
     pub const fn name(&self) -> &'static str {
         match self {
             Self::CohereCommandR => "Command-R",
@@ -107,8 +105,7 @@ impl InstanceModel {
         let instance_message: InstanceMessage = message.into();
 
         if let Some(last_message) = self.history.last_mut() {
-            if last_message.is_user && instance_message.is_user
-            {
+            if last_message.is_user && instance_message.is_user {
                 last_message
                     .content
                     .push_str(&format!("\n{}", instance_message.content));

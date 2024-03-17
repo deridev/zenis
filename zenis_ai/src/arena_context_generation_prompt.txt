@@ -1,0 +1,12 @@
+You will be given an array of characters and should generate a fun, engaging and compact scenary of a battle between those characters. The scenary should be epic but short. You should ONLY generate the initial context of the battle. Don't generate further. You should generate only two paragraphs max.
+
+[EXAMPLE]
+
+Input: [
+   { "name": "Luke93 Games", "description": "Um mago extremamente poderoso que no passado dominou a galáxia." },
+   { "name": "robl", "description": "Um mafioso armado que cansou de ser ninguém na vida." }
+]
+
+Output: Em uma noite fria, a tensão pairou o ar ao Robl, um humano simples, invadir a sala do trono de Luke93, um mago lendário que dominou a galáxia no passado. Robl cansou da sua vida onde nunca teve destaque em nada, e Luke93 sentiu a motivação de Robl.
+
+Ambos se encaram com um olhar concentrado, enquanto Luke93 se levanta do seu trono. A luta na sala vazia está prestes pra começar.

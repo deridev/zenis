@@ -2,8 +2,8 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    brain::{Brain, BrainParameters},
-    common::{ChatMessage, ChatResponse, Role},
+    brain::{Brain, BrainParameters, ARENA_CONTEXT_GENERATION_PROMPT},
+    common::{ArenaCharacter, ArenaMessage, ArenaOutput, ChatMessage, ChatResponse, Role},
     util::remove_italic_actions,
 };
 
@@ -47,7 +47,7 @@ impl Brain for CohereBrain {
         BrainParameters {
             debug: true,
             model: "command-r".to_string(),
-            max_tokens: 200,
+            max_tokens: 300,
             system_prompt: String::new(),
             strip_italic_actions: true,
         }
@@ -127,6 +127,135 @@ impl Brain for CohereBrain {
                 image_url: None,
             },
         })
+    }
+
+    async fn prompt_arena(
+        &self,
+        params: BrainParameters,
+        context: String,
+        characters: Vec<ArenaCharacter>,
+        messages: Vec<ArenaMessage>,
+    ) -> anyhow::Result<ArenaMessage> {
+        let mut arena_messages = Vec::with_capacity(messages.len());
+        for message in messages {
+            arena_messages.push(match message {
+                ArenaMessage::Input(input) => {
+                    let json = serde_json::to_string_pretty(&input)?;
+
+                    MessageHistory {
+                        role: "USER".to_string(),
+                        message: json,
+                    }
+                }
+                ArenaMessage::Output(output) => {
+                    let json = serde_json::to_string_pretty(&output)?;
+
+                    MessageHistory {
+                        role: "CHATBOT".to_string(),
+                        message: json,
+                    }
+                }
+            });
+        }
+
+        while arena_messages.first().is_some_and(|m| m.role != "USER") {
+            arena_messages.remove(0);
+        }
+
+        let last_message = arena_messages.pop();
+
+        let request = CohereChatRequest {
+            model: params.model,
+            max_tokens: params.max_tokens,
+            message: last_message.map(|m| m.message).unwrap_or_default(),
+            system_prompt: self.make_arena_system_prompt(
+                arena_messages.len(),
+                context,
+                &characters,
+            ),
+            temperature: 0.6,
+            chat_history: arena_messages,
+            frequency_penalty: 0.15,
+        };
+
+        let response = self
+            .http_client()
+            .post("https://api.cohere.ai/v1/chat")
+            .header("accept", "application/json")
+            .header("content-type", "application/json")
+            .header(
+                "Authorization",
+                format!("bearer {}", self.api_key(params.debug)),
+            )
+            .json(&request)
+            .send()
+            .await?;
+
+        let status = response.status();
+        if !status.is_success() {
+            let mut text = response.text().await?;
+            text.truncate(1800);
+            return Err(anyhow::anyhow!("Status code: {}\n{:?}", status, text));
+        }
+
+        let status = response.status();
+        if !status.is_success() {
+            let mut text = response.text().await?;
+            text.truncate(1800);
+            return Err(anyhow::anyhow!("Status code: {}\n{:?}", status, text));
+        }
+
+        let response: CohereChatResponse = response.json().await?;
+
+        let output = serde_json::from_str::<ArenaOutput>(&response.text)?;
+
+        Ok(ArenaMessage::Output(output))
+    }
+
+    async fn generate_context(&self, fighters: Vec<ArenaCharacter>) -> anyhow::Result<String> {
+        let mut fighter_strings = vec![];
+
+        for fighter in fighters {
+            fighter_strings.push(format!(
+                "   {{ \"name\": \"{}\", \"description\": \"{}\" }}",
+                fighter.name, fighter.description
+            ));
+        }
+
+        let params = self.default_parameters();
+
+        let request = CohereChatRequest {
+            model: params.model,
+            max_tokens: params.max_tokens,
+            message: format!("[\n{}\n]", fighter_strings.join(",\n")),
+            system_prompt: ARENA_CONTEXT_GENERATION_PROMPT.to_owned(),
+            temperature: 0.6,
+            chat_history: vec![],
+            frequency_penalty: 0.15,
+        };
+
+        let response = self
+            .http_client()
+            .post("https://api.cohere.ai/v1/chat")
+            .header("accept", "application/json")
+            .header("content-type", "application/json")
+            .header(
+                "Authorization",
+                format!("bearer {}", self.api_key(params.debug)),
+            )
+            .json(&request)
+            .send()
+            .await?;
+
+        let status = response.status();
+        if !status.is_success() {
+            let mut text = response.text().await?;
+            text.truncate(1800);
+            return Err(anyhow::anyhow!("Status code: {}\n{:?}", status, text));
+        }
+
+        let response: CohereChatResponse = response.json().await?;
+        Ok(response.text)
     }
 }
 
