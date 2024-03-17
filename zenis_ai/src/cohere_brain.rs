@@ -60,8 +60,8 @@ impl Brain for CohereBrain {
     ) -> anyhow::Result<ChatResponse> {
         let last_message = messages.pop();
 
-        if params.max_tokens < 450 {
-            params.max_tokens = 450;
+        if params.max_tokens < 750 {
+            params.max_tokens = 750;
         }
         let request = CohereChatRequest {
             model: params.model,

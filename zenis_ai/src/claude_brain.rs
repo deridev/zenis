@@ -215,8 +215,8 @@ impl Brain for ClaudeBrain {
             claude_messages.remove(0);
         }
 
-        if params.max_tokens < 450 {
-            params.max_tokens = 450;
+        if params.max_tokens < 750 {
+            params.max_tokens = 750;
         }
 
         let request = ClaudeRequest {
