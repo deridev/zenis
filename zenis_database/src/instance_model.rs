@@ -64,6 +64,7 @@ pub struct InstanceModel {
 
     pub already_introduced: bool,
     pub is_awaiting_new_messages: bool,
+    pub error_counter: u32,
 }
 
 impl InstanceModel {
@@ -98,6 +99,7 @@ impl InstanceModel {
 
             already_introduced: false,
             is_awaiting_new_messages: true,
+            error_counter: 0,
         }
     }
 
@@ -121,6 +123,14 @@ impl InstanceModel {
         }
 
         self.last_received_message_timestamp = Utc::now().timestamp();
+    }
+
+    pub fn increment_error(&mut self) {
+        self.error_counter += 1;
+        if self.error_counter > 10 {
+            self.exit_reason =
+                Some("Erro interno. Desenvolvedor foi contactado sobre o problema.".to_string());
+        }
     }
 
     pub fn introduce(&mut self, introduction_message: impl ToString) -> InstanceMessage {

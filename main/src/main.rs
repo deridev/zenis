@@ -170,10 +170,19 @@ async fn main() {
 
                 let http = client.http.clone();
                 let instances = db.instances().all_actives().await.unwrap_or_default();
-                for instance in instances {
-                    process_instance(http.clone(), client.clone(), db.clone(), instance.clone())
-                        .await
-                        .ok();
+                for mut instance in instances {
+                    let result = process_instance(
+                        http.clone(),
+                        client.clone(),
+                        db.clone(),
+                        instance.clone(),
+                    )
+                    .await;
+
+                    if result.is_err() {
+                        instance.increment_error();
+                        db.instances().save(instance.clone()).await.ok();
+                    }
 
                     let last_message_timestamp = instance.last_received_message_timestamp;
                     let now = chrono::Utc::now();
@@ -274,10 +283,8 @@ async fn process_instance(
                     e,
                 )
                 .await?;
-            instance.exit_reason =
-                Some("Erro interno. Desenvolvedor foi contactado sobre o problema.".to_string());
-            database.instances().save(instance).await?;
-            return Ok(());
+
+            return Err(anyhow::anyhow!("Internal agent error."));
         }
     };
 
