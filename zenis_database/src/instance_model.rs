@@ -64,6 +64,7 @@ pub struct InstanceModel {
 
     pub already_introduced: bool,
     pub is_awaiting_new_messages: bool,
+    #[serde(default = "Default::default")]
     pub error_counter: u32,
 }
 
