@@ -1,7 +1,7 @@
 use std::sync::{atomic::Ordering, Arc};
 
 use rand::{rngs::StdRng, Rng, SeedableRng};
-use zenis_common::{config, Probability};
+use zenis_common::{config, Color, Probability};
 use zenis_database::{
     guild_model::GuildFlag, instance_model::InstanceMessage, user_model::UserFlags, ZenisDatabase,
 };
@@ -10,7 +10,7 @@ use zenis_discord::{
     twilight_model::gateway::payload::incoming::{
         GuildCreate, InteractionCreate, MessageCreate, Ready,
     },
-    UserExtension,
+    EmbedAuthor, EmbedBuilder, UserExtension,
 };
 use zenis_framework::{watcher::Watcher, ZenisClient};
 
@@ -154,6 +154,7 @@ impl EventHandler {
     }
 
     pub async fn guild_create(self, guild_create: Box<GuildCreate>) -> anyhow::Result<()> {
+        let client_user = self.client.current_user().await?;
         let mut guild_data = self.database.guilds().get_by_guild(guild_create.id).await?;
 
         let mut owner_data = self
@@ -175,6 +176,28 @@ impl EventHandler {
         if !guild_data.has_flag(GuildFlag::AlreadyAknowledged) {
             guild_data.add_flag(GuildFlag::AlreadyAknowledged);
             self.database.guilds().save(guild_data).await?;
+
+            for channel in guild_create.channels.iter() {
+                let embed = EmbedBuilder::new_common()
+                    .set_color(Color::GREEN)
+                    .set_author(EmbedAuthor {
+                        name: "Fui adicionado aqui!".to_string(),
+                        icon_url: Some(client_user.avatar_url()),
+                    })
+                    .set_description("## Olá! 👋\nEu me chamo **Zenis**. Sou um bot de inteligência artificial!\nO seu servidor recebeu **50₢** de créditos públicos (`/servidor`) para testar.\n\nUse **/invocar** para começar a conversar com algum bot!\n**/tutorial** mostra mais comandos úteis.\n\nAproveite! :heart:");
+
+                if self
+                    .client
+                    .http
+                    .create_message(channel.id)
+                    .embeds(&[embed.build()])?
+                    .await
+                    .is_ok()
+                {
+                    break;
+                }
+            }
+
             self.client.emit_guild_create_hook(guild_create).await?;
         }
 

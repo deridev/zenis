@@ -3,7 +3,7 @@ use twilight_model::{
         message_component::MessageComponentInteractionData, Interaction, InteractionData,
     },
     guild::Guild,
-    user::User,
+    user::{CurrentUser, User},
 };
 
 pub trait UserExtension {
@@ -30,6 +30,27 @@ impl UserExtension for User {
 
     fn display_name(&self) -> String {
         self.global_name.clone().unwrap_or(self.name.clone())
+    }
+}
+
+impl UserExtension for CurrentUser {
+    fn avatar_url(&self) -> String {
+        let Some(avatar) = self.avatar else {
+            return "https://external-preview.redd.it/fauTrGFvbnTjWM6A6AC8sGqohLQxKHQTfZjhtPbWY7g.jpg?auto=webp&s=5d8e36356dead73ec2e624e41659d411b5fbca53".into();
+        };
+
+        format!(
+            "https://cdn.discordapp.com/avatars/{}/{}.png",
+            self.id, avatar
+        )
+    }
+
+    fn mention(&self) -> String {
+        format!("<@{}>", self.id)
+    }
+
+    fn display_name(&self) -> String {
+        self.name.clone()
     }
 }
 

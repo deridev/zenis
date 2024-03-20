@@ -329,8 +329,10 @@ async fn process_instance_credits_payment(
             user_data.remove_credits(price_per_reply);
 
             if user_data.credits <= 0 {
-                instance.exit_reason =
-                    Some("O usuário não tem mais créditos para pagar o agente".to_string());
+                instance.exit_reason = Some(
+                    "O usuário não tem mais créditos para pagar o agente (use /comprar)"
+                        .to_string(),
+                );
             }
 
             database.users().save(user_data).await?;
@@ -341,7 +343,8 @@ async fn process_instance_credits_payment(
 
             if guild_data.public_credits <= 0 {
                 instance.exit_reason = Some(
-                    "O servidor não tem mais créditos públicos para pagar o agente".to_string(),
+                    "O servidor não tem mais créditos públicos para pagar o agente (use /comprar)"
+                        .to_string(),
                 );
             }
 

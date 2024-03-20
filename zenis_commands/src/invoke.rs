@@ -343,7 +343,7 @@ async fn ask_for_payment_method(
     let embed = EmbedBuilder::new_common()
         .set_color(Color::YELLOW)
         .set_description(format!(
-            "## {} Escolha quem irá pagar o agente.\nPreço por resposta de **{}**: `{}₢`{invocation_price_str}",
+            "## {} Escolha quem irá pagar o agente.\nPreço por resposta de **{}**: `{}₢`{invocation_price_str}\n\n🛒 **Quer mais créditos?**\nUse **/comprar**!\n-> Créditos são a moeda que sustenta Zenis e permite que você aproveite o bot!",
             emojis::CREDIT,
             agent.name,
             pricing.price_per_reply
@@ -429,7 +429,7 @@ pub async fn ask_for_brain(ctx: &mut CommandContext) -> anyhow::Result<InstanceB
             name: "Seleção de Cérebro".to_string(),
             icon_url: Some(author.avatar_url()),
         })
-        .set_description(format!("## {} Escolha qual cérebro você quer no seu agente:\n\n⚡ **Command-R**: cérebro normal. Preço padrão. Menos carismático, mais rápido.\n\n💪 **Haiku**: mais carismático, mais lento e consegue ver imagens. 2 créditos mais caro por mensagem, 5 créditos extra pra cada imagem.", "🧠"));
+        .set_description(format!("## {} Escolha qual cérebro você quer no seu agente:\n\n⚡ **Command-R**: Menos carismático, mais rápido e não consegue ver imagens.\n\n💪 **Haiku**: mais carismático e consegue ver imagens. 5 créditos extra pra cada imagem.\n\nNão sabe qual usar? **Haiku** vale mais a pena!", "🧠"));
 
     let message = ctx
         .send(
