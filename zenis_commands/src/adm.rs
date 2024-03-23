@@ -1,3 +1,5 @@
+use zenis_database::user_model::AdminPermission;
+
 use crate::prelude::*;
 
 type IdString = String;
@@ -13,6 +15,8 @@ pub enum Command {
     ClearInstances(String),
     Accept(String),
     Reject(String, String),
+    AddPerm(IdString, AdminPermission),
+    RemovePerm(IdString, AdminPermission),
 }
 
 impl Command {
@@ -25,6 +29,8 @@ impl Command {
         "clear instances [reason]",
         "accept <id>",
         "reject <id> <reason>",
+        "add perm <id> <permission>",
+        "remove perm <id> <permission>",
     ];
 
     pub fn parse(input: &str) -> Option<Command> {
@@ -59,6 +65,16 @@ impl Command {
                             _ => None,
                         }
                     }
+                    "perm" => {
+                        let id = splitted.next()?.to_lowercase();
+                        let permission = splitted.next()?.to_lowercase();
+
+                        match command.as_str() {
+                            "add" => Some(Command::AddPerm(id, permission.try_into().ok()?)),
+                            "remove" => Some(Command::RemovePerm(id, permission.try_into().ok()?)),
+                            _ => None,
+                        }
+                    }
                     _ => None,
                 }
             }
@@ -90,6 +106,22 @@ impl Command {
             _ => None,
         }
     }
+
+    pub const fn required_permissions(&self) -> &[AdminPermission] {
+        match self {
+            Command::Help => &[],
+            Command::ServerCount => &[],
+            Command::ResetCache(_) => &[],
+            Command::AddCredits(_, _) => &[AdminPermission::ManageCredits],
+            Command::RemoveCredits(_, _) => &[AdminPermission::ManageCredits],
+            Command::ClearChannelInstances(_, _) => &[AdminPermission::ManageInstances],
+            Command::ClearInstances(_) => &[AdminPermission::ManageInstances],
+            Command::Accept(_) => &[AdminPermission::ManageAgents],
+            Command::Reject(_, _) => &[AdminPermission::ManageAgents],
+            Command::AddPerm(_, _) => &[AdminPermission::All],
+            Command::RemovePerm(_, _) => &[AdminPermission::All],
+        }
+    }
 }
 
 #[command("Comando restrito para administradores Zenis.")]
@@ -102,22 +134,41 @@ pub async fn adm(
     command: String,
 ) -> anyhow::Result<()> {
     let author = ctx.author().await?;
-    if author.id.get() != 518830049949122571 {
-        ctx.reply(
-            Response::new_user_reply(&author, "você não tem permissão para usar esse comando!")
-                .add_emoji_prefix(emojis::ERROR),
-        )
-        .await?;
-        return Ok(());
+    let author_data = ctx.db().users().get_by_user(author.id).await?;
+
+    macro_rules! check_permission {
+        ($permission:expr) => {{
+            if !author_data.has_admin_permission($permission) {
+                ctx.send(
+                    Response::new_user_reply(
+                        &author,
+                        format!("você precisa da permissão de administrador **{}** para executar essa ação!", $permission),
+                    )
+                    .add_emoji_prefix("⛔"),
+                )
+                .await?;
+                return Ok(());
+            }
+        }};
     }
+
+    check_permission!(AdminPermission::UseAdmCommand);
 
     let Some(command) = Command::parse(&command) else {
         ctx.reply(
-            Response::new_user_reply(&author, "comando inválido!").add_emoji_prefix(emojis::ERROR),
+            Response::new_user_reply(
+                &author,
+                "comando ou argumentos inválidos! Use **/adm cmd: help**.",
+            )
+            .add_emoji_prefix(emojis::ERROR),
         )
         .await?;
         return Ok(());
     };
+
+    for perm in command.required_permissions() {
+        check_permission!(*perm);
+    }
 
     macro_rules! parse_id {
         ($id:expr) => {{
@@ -400,6 +451,42 @@ pub async fn adm(
                 .embeds(&[embed.build()])?
                 .await
                 .ok();
+        }
+        Command::AddPerm(id, permission) => {
+            let id = parse_id!(Some(id));
+            if let Ok(user) = ctx.client.get_user(id_to_discord_id!(id)).await {
+                let mut user_data = ctx.db().users().get_by_user(user.id).await?;
+                user_data.insert_admin_permission(permission);
+                ctx.db().users().save(user_data).await?;
+
+                ctx.send(
+                    Response::new_user_reply(
+                        &author,
+                        format!("permissão `{}` adicionada com sucesso!", permission),
+                    )
+                    .add_emoji_prefix(emojis::SUCCESS),
+                )
+                .await
+                .ok();
+            }
+        }
+        Command::RemovePerm(id, permission) => {
+            let id = parse_id!(Some(id));
+            if let Ok(user) = ctx.client.get_user(id_to_discord_id!(id)).await {
+                let mut user_data = ctx.db().users().get_by_user(user.id).await?;
+                user_data.remove_admin_permission(permission);
+                ctx.db().users().save(user_data).await?;
+
+                ctx.send(
+                    Response::new_user_reply(
+                        &author,
+                        format!("permissão `{}` removida com sucesso!", permission),
+                    )
+                    .add_emoji_prefix(emojis::SUCCESS),
+                )
+                .await
+                .ok();
+            }
         }
     }
 

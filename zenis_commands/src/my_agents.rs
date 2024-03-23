@@ -42,8 +42,8 @@ pub async fn my_agents(mut ctx: CommandContext) -> anyhow::Result<()> {
             page = page.add_not_inlined_field(
                 &agent.name,
                 format!(
-                    "ID: `{}`\nDescrição: `{}...`\nPreço por invocação: `{}₢`\n\nInvocações totais: `{}`\nRespostas totais: `{}`",
-                    agent.identifier, display_description, agent.pricing.price_per_invocation, agent.stats.invocations, agent.stats.replies
+                    "ID: `{}`\nDescrição: `{}...`\nPreço por invocação: `{}₢`\nPúblico: `{}`\n\nInvocações totais: `{}`\nRespostas totais: `{}`",
+                    agent.identifier, display_description, agent.pricing.price_per_invocation, if agent.public { "Sim" } else { "Não" }, agent.stats.invocations, agent.stats.replies
                 )
             );
         }

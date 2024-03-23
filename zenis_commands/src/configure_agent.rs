@@ -324,10 +324,27 @@ pub async fn configure_agent(
             )
             .await?;
         } else {
-            let confirmation = ctx.helper().create_confirmation(
-                author.id, false,
-                Response::new_user_reply(&author, "você quer publicar o agente? Vai custar **20₢** e seu agente passará por um processo de verificação antes de ser publicado.\n**Se o seu agente for RECUSADO, você não terá reembolso dos créditos. Não envie agentes ofensivos, NSFW ou de cunho preconceituoso.**")
-                .add_emoji_prefix(emojis::WARNING)).await?;
+            let pricing_str = if config::PUBLISH_AGENT_PRICE > 0 {
+                format!("Vai custar **{}₢** e seu agente passará por um processo de verificação antes de ser publicado.{}", 
+                config::PUBLISH_AGENT_PRICE,
+                "\n**Se o seu agente for RECUSADO, você não terá reembolso dos créditos. Não envie agentes ofensivos, NSFW ou de cunho preconceituoso.**")
+            } else {
+                "Seu agente passará por um processo de verificação antes de ser publicado."
+                    .to_string()
+            };
+
+            let confirmation = ctx
+                .helper()
+                .create_confirmation(
+                    author.id,
+                    false,
+                    Response::new_user_reply(
+                        &author,
+                        format!("você quer publicar o agente? {pricing_str}"),
+                    )
+                    .add_emoji_prefix(emojis::WARNING),
+                )
+                .await?;
             if !confirmation {
                 return Ok(());
             }
@@ -351,7 +368,7 @@ pub async fn configure_agent(
             }
 
             let mut user_data = ctx.db().users().get_by_user(author.id).await?;
-            if user_data.credits < 20 {
+            if user_data.credits < config::PUBLISH_AGENT_PRICE {
                 ctx.send(
                     Response::new_user_reply(
                         &author,
@@ -363,7 +380,7 @@ pub async fn configure_agent(
                 return Ok(());
             }
 
-            user_data.remove_credits(20);
+            user_data.remove_credits(config::PUBLISH_AGENT_PRICE);
             ctx.db().users().save(user_data).await?;
             agent.is_waiting_for_approval = true;
             ctx.db().agents().save(agent.clone()).await?;

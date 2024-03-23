@@ -151,14 +151,15 @@ async fn generate_pagination(
             page = page.add_not_inlined_field(
                 &agent.name,
                 format!(
-                    "**ID**: `{}`\n**Descrição**: `{}...`\n**Preço por invocação**: `{}₢`",
+                    "**ID**: `{}`\n**Descrição**: `{}...`\n**Preço por invocação**: `{}₢`\n**Invocações totais**: `{}`",
                     agent.identifier,
                     display_description,
                     if agent.pricing.price_per_invocation > 0 {
                         agent.pricing.price_per_invocation.to_string()
                     } else {
                         "GRÁTIS ".to_string()
-                    }
+                    },
+                    agent.stats.invocations
                 ),
             );
 

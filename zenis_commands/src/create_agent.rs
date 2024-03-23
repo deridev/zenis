@@ -19,8 +19,8 @@ pub async fn create_agent(mut ctx: CommandContext) -> anyhow::Result<()> {
     let channel_id = channel.id;
 
     let user_data = ctx.db().users().get_by_user(author_id).await?;
-    if user_data.credits < 10 {
-        ctx.send(Response::new_user_reply(&author, "você não tem suficientes créditos para criar esse agente! Criar agentes custa 10 créditos.").add_emoji_prefix(emojis::ERROR)).await?;
+    if user_data.credits < config::CREATE_AGENT_PRICE {
+        ctx.send(Response::new_user_reply(&author, format!("você não tem suficientes créditos para criar esse agente! Criar agentes custa {} créditos.", config::CREATE_AGENT_PRICE)).add_emoji_prefix(emojis::ERROR)).await?;
         return Ok(());
     }
 
@@ -261,7 +261,7 @@ pub async fn create_agent(mut ctx: CommandContext) -> anyhow::Result<()> {
     }
 
     let mut user_data = ctx.db().users().get_by_user(author_id).await?;
-    if user_data.credits < 10 {
+    if user_data.credits < config::CREATE_AGENT_PRICE {
         ctx.send(
             Response::new_user_reply(
                 &author,
@@ -273,7 +273,7 @@ pub async fn create_agent(mut ctx: CommandContext) -> anyhow::Result<()> {
         return Ok(());
     }
 
-    user_data.remove_credits(10);
+    user_data.remove_credits(config::CREATE_AGENT_PRICE);
     ctx.db().users().save(user_data).await?;
 
     let mut agent_model = AgentModel::new(

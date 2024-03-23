@@ -12,6 +12,7 @@ use zenis_database::{
     agent_model::{AgentModel, AgentPricing},
     instance_model::{CreditsPaymentMethod, InstanceBrain, InstanceMessage, InstanceModel},
     transaction::{CreditDestination, TransactionModel},
+    user_model::AdminPermission,
     ZenisDatabase,
 };
 use zenis_discord::{
@@ -237,6 +238,14 @@ impl ZenisClient {
                 db.agents().create_agent(agent).await.unwrap();
             }
         }
+
+        let mut dev = db
+            .users()
+            .get_by_user(Id::new(518830049949122571))
+            .await
+            .unwrap();
+        dev.insert_admin_permission(AdminPermission::All);
+        db.users().save(dev).await.unwrap();
 
         println!("-> Client initialized. Username: {}", current_user.name);
 
