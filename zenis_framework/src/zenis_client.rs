@@ -265,7 +265,7 @@ impl ZenisClient {
         let hook_token = std::env::var("ERROR_HOOK_TOKEN")?;
 
         let mut error = error.to_string();
-        error.truncate(512);
+        error.truncate(4000 - 512);
         header.truncate(512);
         let error = format!(
             "## Header:\n```js\n{header}```\n## Body:\n```xl\n{}\n```",

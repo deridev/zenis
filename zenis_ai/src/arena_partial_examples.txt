@@ -1,6 +1,6 @@
 [EXAMPLE]
 CharacterTable: [
-   { "name": "Jake", "description": "Jake é um poderoso mafioso que tem um revólver com apenas uma bala." },
+   { "name": "Jakez1", "description": "Jake é um poderoso mafioso que tem um revólver com apenas uma bala." },
    { "name": "Bob", "description": "Bob é um ex-mafioso desarmado tentando se livrar do seu antigo chefe, Jake" }
 ]
 
@@ -16,12 +16,12 @@ Input: {
 
 Output: {
    "tags": ["OPAction"],
-   "output_message: "Bob, furioso, tenta morder o crânio de Jake enquanto delira sobre poderes, mas Jake aproveita que Bob está fazendo uma ação ilógica e desesperada para socar o rosto de Bob com força. Bob caiu no chão!",
+   "output_message: "Bob, furioso, tenta morder o crânio de Jake enquanto delira sobre poderes, mas Jake aproveita que Bob está fazendo uma ação ilógica e desesperada para socar o rosto de Bob com muita força, lançando Bob alguns metros à frente e fazendo-o sangrar. Bob caiu no chão!", 
    "consequences": "Bob está caído de costas e com o rosto sangrando."
 }
 
 Input: {
-   "character_name": "Jake",
+   "character_name": "Jakez1",
    "action": "Aproveitar que Bob está no chão e louco e disparar contra ele"
    "luck": 70
 }
@@ -30,6 +30,6 @@ Output: {
    "tags": ["End"],
    "output_message: "Jake se aproveita da fraqueza de Bob, e com seu revólver, dispara contra o rosto do ex-mafioso. Bob poderia facilmente ter desviado desse tiro, mas estar no chão o faz ficar desamparado e morrer.",
    "consequences": "Jake venceu a luta. Bob foi encontrado pela polícia 4 dias depois em um rio, e Jake, com a influência da Máfia, viveu uma vida de sucesso e crimes, até morrer com 78 anos de causas naturais. Sua vida foi repleta de vitórias, enquanto Bob foi esquecido no tempo, como uma mosca em um jornal.",
-   "winner": "Jake"
+   "winner": "Jakez1"
 }
 [END OF EXAMPLE]
