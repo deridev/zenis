@@ -150,6 +150,12 @@ impl Brain for CohereBrain {
                         message: json,
                     }
                 }
+                ArenaMessage::Error(error) => {
+                    MessageHistory {
+                        role: "USER".to_string(),
+                        message: format!("[SYSTEM ERROR. REWRITE YOUR OUTPUT OR THE BOT WILL CRASH.]\n{}", error),
+                    }
+                }
                 ArenaMessage::Output(output) => {
                     let json = serde_json::to_string_pretty(&output)?;
 

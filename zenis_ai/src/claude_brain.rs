@@ -202,6 +202,16 @@ impl Brain for ClaudeBrain {
                         }],
                     }
                 }
+                ArenaMessage::Error(error) => {
+                    ClaudeChatMessage {
+                        role: "user".to_string(),
+                        content: vec![ClaudeContent {
+                            ty: "text".to_string(),
+                            text: Some(format!("[SYSTEM ERROR. REWRITE YOUR OUTPUT OR THE BOT WILL CRASH.]\n{}", error)),
+                            source: None,
+                        }],
+                    }
+                }
                 ArenaMessage::Output(output) => {
                     let json = serde_json::to_string_pretty(&output)?;
 

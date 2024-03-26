@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use anyhow::bail;
 use rand::{rngs::StdRng, Rng, SeedableRng};
 use zenis_ai::{
     common::{ArenaCharacter, ArenaInput, ArenaMessage, ArenaOutput},
@@ -29,6 +30,7 @@ pub struct ArenaController {
     pub history: Vec<ArenaMessage>,
     pub brain: InstanceBrain,
     pub winner: Option<String>,
+    pub error_counter: u32,
 }
 
 impl ArenaController {
@@ -42,13 +44,14 @@ impl ArenaController {
         let mut history = self
             .history
             .iter()
-            .map(|m| match m {
+            .filter_map(|m| match m {
                 ArenaMessage::Input(input) => {
-                    format!("\n### **{}**: `{}`", input.character_name, input.action)
+                    Some(format!("\n### **{}**: `{}`", input.character_name, input.action))
                 }
                 ArenaMessage::Output(output) => {
-                    format!("{} ➡️ **{}**", output.output_message, output.consequences)
+                    Some(format!("{} ➡️ **{}**", output.output_message, output.consequences))
                 }
+                ArenaMessage::Error(..) => None
             })
             .collect::<Vec<_>>();
 
@@ -111,6 +114,7 @@ impl ArenaController {
         match output {
             ArenaMessage::Output(output) => Ok(output),
             ArenaMessage::Input(_) => unreachable!(),
+            ArenaMessage::Error(_) => unreachable!(),
         }
     }
 
@@ -170,6 +174,7 @@ pub async fn run_arena(
         brain,
         history: vec![],
         winner: None,
+        error_counter: 0
     };
 
     let mut rng = StdRng::from_entropy();
@@ -183,7 +188,31 @@ pub async fn run_arena(
             luck: rng.gen_range(0..=100),
         }));
 
-        let output = controller.generate_output().await?;
+        let output = match controller.generate_output().await {
+            Ok(output) => output,
+            Err(e) => {
+                let history_backup = controller.history.clone();
+
+                controller.history.push(ArenaMessage::Output(ArenaOutput::make_invalid("INVALID_INPUT_READ_ERROR")));
+
+                let mut error = e.to_string();
+                error.truncate(256);
+                controller.history.push(ArenaMessage::Error(format!("{}...", error)));
+
+                let output = controller.generate_output().await;
+                match output {
+                    Ok(output) => {
+                        controller.history = history_backup;
+                        controller.history.push(ArenaMessage::Output(output.clone()));
+                        output
+                    },
+                    Err(e) => {
+                        bail!("Failed to generate arena output after error. Error: {}", e);
+                    }
+                }
+                
+            }
+        };
 
         if let Some(winner) = output.winner {
             controller.winner = Some(winner);

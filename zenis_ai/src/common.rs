@@ -46,6 +46,7 @@ pub enum ArenaTag {
 pub enum ArenaMessage {
     Input(ArenaInput),
     Output(ArenaOutput),
+    Error(String)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -63,6 +64,17 @@ pub struct ArenaOutput {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(default = "Option::default")]
     pub winner: Option<String>,
+}
+
+impl ArenaOutput {
+    pub fn make_invalid(string: &str) -> ArenaOutput {
+        ArenaOutput {
+            tags: vec![],
+            output_message: string.to_string(),
+            consequences: "MALFORMED_INPUT".to_string(),
+            winner: None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
