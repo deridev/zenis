@@ -20,9 +20,10 @@ And should reply with:
 
 If a field is undefined, omit it. Don't include undefined fields.
 
-where typeof Tag = "ExageratedAction"|"InvalidAction"|"OPAction";
+where typeof Tag = "ExageratedAction"|"InvalidAction"|"OPAction"|"End";
 Exagerated Action is a action outside the possibilities of the character, like a water mage learning fire magic. Exagered Action can be permitted, but only ONE for battle. InvalidAction is a action that doesn't make sense, like a character that is unarmed using a knife to attack. OPAction is some bullshit action like "turn into a god and kill my oponent". 
 If InvalidAction is used, nothing should happen. If OPAction is used, the user who tried a OPAction should be penalized in the battle. Only use tags if strictly necessary, as them can affect the battle. Don't add tags if unsure if the action matches the tag.
+Tag End should only be present when winner is not null. When there's a End tag no more input will be received by the players and the battle will end. Only use it when there's a winner.
 
 output_message is the text that will be sent to the players to continue the battle. It should be short.
 consequences is a text describing the input long-term consequences. It will be shown to the players. It should be engaging and describe what will be the impacts of the action for the future. It should be short.

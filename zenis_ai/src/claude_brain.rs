@@ -231,8 +231,8 @@ impl Brain for ClaudeBrain {
             claude_messages.remove(0);
         }
 
-        if params.max_tokens < 750 {
-            params.max_tokens = 750;
+        if params.max_tokens < 1024 {
+            params.max_tokens = 1024;
         }
 
         let request = ClaudeRequest {
@@ -268,7 +268,7 @@ impl Brain for ClaudeBrain {
             return Err(anyhow::anyhow!("No output found"));
         };
 
-        let output = match serde_json::from_str::<ArenaOutput>(&output) {
+        let output = match serde_json::from_str::<ArenaOutput>(output.trim()) {
             Ok(output) => output,
             Err(e) => {
                 return Err(anyhow::anyhow!(

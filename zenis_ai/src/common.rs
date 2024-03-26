@@ -58,6 +58,7 @@ pub struct ArenaInput {
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct ArenaOutput {
+    #[serde(default = "Vec::new")]
     pub tags: Vec<ArenaTag>,
     pub output_message: String,
     pub consequences: String,

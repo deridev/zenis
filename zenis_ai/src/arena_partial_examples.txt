@@ -27,7 +27,7 @@ Input: {
 }
 
 Output: {
-   "tags": [],
+   "tags": ["End"],
    "output_message: "Jake se aproveita da fraqueza de Bob, e com seu revólver, dispara contra o rosto do ex-mafioso. Bob poderia facilmente ter desviado desse tiro, mas estar no chão o faz ficar desamparado e morrer.",
    "consequences": "Jake venceu a luta. Bob foi encontrado pela polícia 4 dias depois em um rio, e Jake, com a influência da Máfia, viveu uma vida de sucesso e crimes, até morrer com 78 anos de causas naturais. Sua vida foi repleta de vitórias, enquanto Bob foi esquecido no tempo, como uma mosca em um jornal.",
    "winner": "Jake"
