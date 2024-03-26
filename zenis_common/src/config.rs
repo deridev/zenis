@@ -9,7 +9,7 @@ pub const ARENA_NAME_SIZE: RangeInclusive<usize> = 1..=64;
 pub const ARENA_DESCRIPTION_SIZE: RangeInclusive<usize> = 1..=300;
 
 pub const NAME_SIZE: RangeInclusive<usize> = 1..=32;
-pub const DESCRIPTION_SIZE: RangeInclusive<usize> = 1..=1024;
+pub const DESCRIPTION_SIZE: RangeInclusive<usize> = 1..=1500;
 pub const INTRODUCTION_MESSAGE_SIZE: RangeInclusive<usize> = 1..=312;
 
 pub const CREATE_AGENT_PRICE: i64 = 0;
