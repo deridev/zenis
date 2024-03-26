@@ -78,9 +78,11 @@ impl Brain for ClaudeBrain {
 
         for (index, message) in messages.iter().enumerate() {
             let mut contents = vec![];
+            let mut has_image = false;
             if let Some(image_url) = &message.image_url {
                 if index == len - 1 && message.role == Role::User {
                     let image = load_image_from_url(image_url).await?;
+                    has_image = true;
                     contents.push(ClaudeContent {
                         ty: "image".to_string(),
                         source: Some(ClaudeImage {
@@ -95,7 +97,11 @@ impl Brain for ClaudeBrain {
 
             contents.push(ClaudeContent {
                 ty: "text".to_string(),
-                text: Some(message.content.clone()),
+                text: Some(if has_image {
+                    format!("{} [IMAGEM]", message.content)
+                } else {
+                    message.content.clone()
+                }),
                 source: None,
             });
 
