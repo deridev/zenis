@@ -40,6 +40,7 @@ pub enum ArenaTag {
     ExageratedAction,
     InvalidAction,
     OPAction,
+    End
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
