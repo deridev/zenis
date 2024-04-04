@@ -1,3 +1,4 @@
+use rand::{prelude::SliceRandom, rngs::StdRng, SeedableRng};
 use zenis_database::user_model::AdminPermission;
 
 use crate::prelude::*;
@@ -17,6 +18,7 @@ pub enum Command {
     Reject(String, String),
     AddPerm(IdString, AdminPermission),
     RemovePerm(IdString, AdminPermission),
+    SuperGiveaway(u32, i64, u64),
 }
 
 impl Command {
@@ -31,6 +33,7 @@ impl Command {
         "reject <id> <reason>",
         "add perm <id> <permission>",
         "remove perm <id> <permission>",
+        "supergiveaway <amount of guilds> <credits>, <min_members>",
     ];
 
     pub fn parse(input: &str) -> Option<Command> {
@@ -103,6 +106,16 @@ impl Command {
                 let reason = splitted.collect::<Vec<_>>().join(" ");
                 Some(Command::Reject(id, reason))
             }
+            "supergiveaway" => {
+                let amount_of_guilds = splitted.next()?.parse::<u32>().ok()?;
+                let credits = splitted.next()?.parse::<i64>().ok()?;
+                let min_members = splitted.next()?.parse::<u64>().ok()?;
+                Some(Command::SuperGiveaway(
+                    amount_of_guilds,
+                    credits,
+                    min_members,
+                ))
+            }
             _ => None,
         }
     }
@@ -120,6 +133,7 @@ impl Command {
             Command::Reject(_, _) => &[AdminPermission::ManageAgents],
             Command::AddPerm(_, _) => &[AdminPermission::All],
             Command::RemovePerm(_, _) => &[AdminPermission::All],
+            Command::SuperGiveaway(..) => &[AdminPermission::God],
         }
     }
 }
@@ -487,6 +501,51 @@ pub async fn adm(
                 .await
                 .ok();
             }
+        }
+        Command::SuperGiveaway(amount_of_guilds, credits, min_members) => {
+            ctx.send("Sorteando...").await?;
+            let client_user = ctx.client.current_user().await?;
+
+            let all_guilds = ctx.client.http.current_user_guilds().await?.model().await?;
+            let mut guilds = Vec::with_capacity(amount_of_guilds as usize);
+            for guild in all_guilds.iter() {
+                let guild = ctx.client.get_guild(guild.id).await?;
+                if guild.member_count.unwrap_or(0) >= min_members {
+                    guilds.push(guild);
+                }
+            }
+
+            guilds.shuffle(&mut StdRng::from_entropy());
+            let guilds = guilds.into_iter().take(amount_of_guilds as usize);
+
+            let counter = guilds.len();
+            for guild in guilds {
+                let mut guild_data = ctx.db().guilds().get_by_guild(guild.id).await?;
+                guild_data.add_public_credits(credits);
+
+                'f: for channel in guild.channels.iter() {
+                    let embed = EmbedBuilder::new_common()
+                        .set_color(Color::YELLOW)
+                        .set_author(EmbedAuthor {
+                            name: "O servidor ganhou créditos!".to_string(),
+                            icon_url: Some(client_user.avatar_url()),
+                        })
+                        .set_description(format!("## {} Parabéns! O administrador {} sorteou alguns créditos, e o seu servidor `{}` venceu!\n\n**{}₢ créditos** foram adicionados à carteira pública do seu servidor. Use **/invocar** e se divirtam!\n**Não sabe usar Zenis? Use `/tutorial` e vai testando os comandos!**", emojis::CREDIT, author.display_name(), guild.name, credits));
+
+                    if ctx
+                        .client
+                        .http
+                        .create_message(channel.id)
+                        .embeds(&[embed.build()])?
+                        .await
+                        .is_ok()
+                    {
+                        break 'f;
+                    }
+                }
+            }
+
+            ctx.send(Response::new_user_reply(&author, format!("**{} servidores com mais de {} membros** foram sorteados e receberam **{}₢ créditos**!", min_members, counter, credits)).add_emoji_prefix(emojis::SUCCESS)).await?;
         }
     }
 

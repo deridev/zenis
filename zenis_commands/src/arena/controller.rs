@@ -45,13 +45,15 @@ impl ArenaController {
             .history
             .iter()
             .filter_map(|m| match m {
-                ArenaMessage::Input(input) => {
-                    Some(format!("\n### **{}**: `{}`", input.character_name, input.action))
-                }
-                ArenaMessage::Output(output) => {
-                    Some(format!("{} ➡️ **{}**", output.output_message, output.consequences))
-                }
-                ArenaMessage::Error(..) => None
+                ArenaMessage::Input(input) => Some(format!(
+                    "\n### **{}**: `{}`",
+                    input.character_name, input.action
+                )),
+                ArenaMessage::Output(output) => Some(format!(
+                    "{} ➡️ **{}**",
+                    output.output_message, output.consequences
+                )),
+                ArenaMessage::Error(..) => None,
             })
             .collect::<Vec<_>>();
 
@@ -174,7 +176,7 @@ pub async fn run_arena(
         brain,
         history: vec![],
         winner: None,
-        error_counter: 0
+        error_counter: 0,
     };
 
     let mut rng = StdRng::from_entropy();
@@ -193,24 +195,31 @@ pub async fn run_arena(
             Err(e) => {
                 let history_backup = controller.history.clone();
 
-                controller.history.push(ArenaMessage::Output(ArenaOutput::make_invalid("INVALID_INPUT_READ_ERROR")));
+                controller
+                    .history
+                    .push(ArenaMessage::Output(ArenaOutput::make_invalid(
+                        "INVALID_INPUT_READ_ERROR",
+                    )));
 
                 let mut error = e.to_string();
                 error.truncate(256);
-                controller.history.push(ArenaMessage::Error(format!("{}...", error)));
+                controller
+                    .history
+                    .push(ArenaMessage::Error(format!("{}...", error)));
 
                 let output = controller.generate_output().await;
                 match output {
                     Ok(output) => {
                         controller.history = history_backup;
-                        controller.history.push(ArenaMessage::Output(output.clone()));
+                        controller
+                            .history
+                            .push(ArenaMessage::Output(output.clone()));
                         output
-                    },
+                    }
                     Err(e) => {
                         bail!("Failed to generate arena output after error. Error: {}", e);
                     }
                 }
-                
             }
         };
 

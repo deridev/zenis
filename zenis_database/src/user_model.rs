@@ -17,6 +17,7 @@ pub enum UserFlags {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Serialize)]
 pub enum AdminPermission {
     All,
+    God,
     UseAdmCommand,
     ManageCredits,
     ManageAgents,
@@ -27,6 +28,7 @@ impl Display for AdminPermission {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::All => write!(f, "ALL"),
+            Self::God => write!(f, "GOD"),
             Self::UseAdmCommand => write!(f, "USE_ADM_COMMAND"),
             Self::ManageCredits => write!(f, "MANAGE_CREDITS"),
             Self::ManageAgents => write!(f, "MANAGE_AGENTS"),
@@ -41,6 +43,7 @@ impl TryFrom<String> for AdminPermission {
     fn try_from(value: String) -> Result<Self, Self::Error> {
         match value.to_lowercase().as_str() {
             "all" => Ok(Self::All),
+            "god" => Ok(Self::God),
             "use_adm_command" => Ok(Self::UseAdmCommand),
             "manage_credits" => Ok(Self::ManageCredits),
             "manage_agents" => Ok(Self::ManageAgents),

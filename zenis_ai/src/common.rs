@@ -40,14 +40,14 @@ pub enum ArenaTag {
     ExageratedAction,
     InvalidAction,
     OPAction,
-    End
+    End,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum ArenaMessage {
     Input(ArenaInput),
     Output(ArenaOutput),
-    Error(String)
+    Error(String),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
