@@ -3,6 +3,7 @@ use std::hash::Hash;
 use bson::{doc, oid::ObjectId, Document};
 use mongodb::Collection;
 use once_cell::sync::Lazy;
+use tokio_stream::StreamExt;
 use zenis_common::Cache;
 use zenis_discord::twilight_model::id::{marker::GuildMarker, Id};
 
@@ -72,6 +73,17 @@ impl GuildCommands {
             Some(guild_data) => Ok(guild_data),
             None => Ok(self.create_guild_data(guild_id).await?),
         }
+    }
+
+    pub async fn get_all_guilds(&self) -> anyhow::Result<Vec<GuildModel>> {
+        let query = doc! {};
+
+        Ok(self
+            .collection
+            .find(query, None)
+            .await?
+            .collect::<Result<Vec<_>, _>>()
+            .await?)
     }
 
     pub async fn create_guild_data(&self, guild_id: Id<GuildMarker>) -> anyhow::Result<GuildModel> {

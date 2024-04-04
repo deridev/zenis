@@ -506,22 +506,36 @@ pub async fn adm(
             ctx.send("Sorteando...").await?;
             let client_user = ctx.client.current_user().await?;
 
-            let all_guilds = ctx.client.http.current_user_guilds().await?.model().await?;
-            let mut guilds = Vec::with_capacity(amount_of_guilds as usize);
-            for guild in all_guilds.iter() {
-                let guild = ctx.client.get_guild(guild.id).await?;
-                if guild.member_count.unwrap_or(0) >= min_members {
-                    guilds.push(guild);
+            let all_guild_models = ctx.db().guilds().get_all_guilds().await?;
+
+            let mut all_guilds = {
+                let mut guilds = Vec::with_capacity(amount_of_guilds as usize);
+                for data in all_guild_models.iter() {
+                    let Ok(guild) = ctx.client.get_guild(data.guild_id.parse().unwrap()).await
+                    else {
+                        continue;
+                    };
+
+                    if guild.approximate_member_count.unwrap_or(0) < min_members {
+                        continue;
+                    }
+
+                    guilds.push((guild, data.clone()));
                 }
-            }
 
-            guilds.shuffle(&mut StdRng::from_entropy());
-            let guilds = guilds.into_iter().take(amount_of_guilds as usize);
+                guilds
+            };
 
-            let counter = guilds.len();
-            for guild in guilds {
-                let mut guild_data = ctx.db().guilds().get_by_guild(guild.id).await?;
-                guild_data.add_public_credits(credits);
+            all_guilds.shuffle(&mut StdRng::from_entropy());
+
+            let guilds = all_guilds.into_iter().take(amount_of_guilds as usize);
+
+            let mut counter = 0;
+            for (guild, mut data) in guilds {
+                data.add_public_credits(credits);
+                ctx.db().guilds().save(data).await?;
+
+                counter += 1;
 
                 'f: for channel in guild.channels.iter() {
                     let embed = EmbedBuilder::new_common()
@@ -545,7 +559,7 @@ pub async fn adm(
                 }
             }
 
-            ctx.send(Response::new_user_reply(&author, format!("**{} servidores com mais de {} membros** foram sorteados e receberam **{}₢ créditos**!", min_members, counter, credits)).add_emoji_prefix(emojis::SUCCESS)).await?;
+            ctx.send(Response::new_user_reply(&author, format!("**{} servidores com mais de {} membros** foram sorteados e receberam **{}₢ créditos**!", counter, min_members, credits)).add_emoji_prefix(emojis::SUCCESS)).await?;
         }
     }
 
