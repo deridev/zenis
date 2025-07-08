@@ -116,7 +116,6 @@ async fn generate_pagination(
     }
 
     agents.sort_unstable_by_key(|agent| u64::MAX.saturating_sub(agent.stats.invocations));
-    agents.retain(|agent| !agent.tags.contains("special"));
 
     // Remove duplicated agent's with repeated identifiers
     let mut unique_agents = Vec::with_capacity(agents.len());
@@ -169,6 +168,15 @@ async fn generate_pagination(
         }
 
         pages.push(page);
+    }
+
+    if pages.is_empty() {
+        ctx.send(Response::new_user_reply(
+            author,
+            "nenhum agente foi encontrado!",
+        ))
+        .await?;
+        return Ok(());
     }
 
     EmbedPagination::new(ctx.clone(), pages).send().await?;

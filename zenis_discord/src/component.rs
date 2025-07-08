@@ -1,7 +1,7 @@
 #![allow(unused)]
 use twilight_model::channel::message::{
+    Component, EmojiReactionType, ReactionType,
     component::{ActionRow, Button, ButtonStyle},
-    Component, ReactionType,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -34,6 +34,7 @@ impl Default for ButtonBuilder {
                 emoji: None,
                 label: None,
                 url: None,
+                sku_id: None,
             },
         }
     }
@@ -54,18 +55,18 @@ impl ButtonBuilder {
         self
     }
 
+    pub fn set_url(mut self, url: impl ToString) -> Self {
+        self.data.url = Some(url.to_string());
+        self
+    }
+
     pub fn set_style(mut self, style: ButtonStyle) -> Self {
         self.data.style = style;
         self
     }
 
-    pub fn set_emoji(mut self, emoji: impl Into<ReactionType>) -> Self {
+    pub fn set_emoji(mut self, emoji: impl Into<EmojiReactionType>) -> Self {
         self.data.emoji = Some(emoji.into());
-        self
-    }
-
-    pub fn set_url(mut self, url: impl ToString) -> Self {
-        self.data.url = Some(url.to_string());
         self
     }
 

@@ -26,7 +26,7 @@ impl AgentCommands {
         CACHE_IDENTIFIER.remove(&agent_data.identifier);
         CACHE_ID.remove(&agent_data.id);
         self.collection
-            .replace_one(query_by_id(agent_data.id), &agent_data, None)
+            .replace_one(query_by_id(agent_data.id), &agent_data)
             .await?;
         Ok(())
     }
@@ -46,7 +46,7 @@ impl AgentCommands {
         match cached {
             Some(model) => Ok(Some(model)),
             None => {
-                let Some(model) = self.collection.find_one(query, None).await? else {
+                let Some(model) = self.collection.find_one(query).await? else {
                     return Ok(None);
                 };
 
@@ -89,7 +89,7 @@ impl AgentCommands {
 
         Ok(self
             .collection
-            .find(query, None)
+            .find(query)
             .await?
             .collect::<Result<Vec<_>, _>>()
             .await?)
@@ -102,7 +102,7 @@ impl AgentCommands {
 
         Ok(self
             .collection
-            .find(query, None)
+            .find(query)
             .await?
             .collect::<Result<Vec<_>, _>>()
             .await?)
@@ -116,7 +116,7 @@ impl AgentCommands {
 
         Ok(self
             .collection
-            .find(query, None)
+            .find(query)
             .await?
             .collect::<Result<Vec<_>, _>>()
             .await?)
@@ -129,7 +129,7 @@ impl AgentCommands {
 
         Ok(self
             .collection
-            .find(query, None)
+            .find(query)
             .await?
             .collect::<Result<Vec<_>, _>>()
             .await?)
@@ -144,7 +144,7 @@ impl AgentCommands {
             return Err(anyhow::anyhow!("Agent with this identifier already exists"));
         }
 
-        self.collection.insert_one(agent_model, None).await?;
+        self.collection.insert_one(agent_model).await?;
 
         Ok(())
     }

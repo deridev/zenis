@@ -1,5 +1,6 @@
 use std::sync::{atomic::Ordering, Arc};
 
+use chrono::Utc;
 use rand::{rngs::StdRng, Rng, SeedableRng};
 use zenis_common::{config, Color, Probability};
 use zenis_database::{
@@ -97,7 +98,7 @@ impl EventHandler {
         }
 
         const VALID_IMAGE_TYPES: &[&str] = &["image/png", "image/jpeg", "image/jpg"];
-        let image_url = message
+        let _image_url = message
             .attachments
             .iter()
             .filter(|m| {
@@ -122,25 +123,34 @@ impl EventHandler {
             }
 
             let mut content = message.content.clone();
-            content.truncate(1024);
+            content = content.chars().take(1000).collect();
+
+            let formated_content = format!(
+                "<!name/>{}\n<!user/>@{}\n<!user_id/>{}\n<!date/>{}\n<!message_id/>{}\n<!channel/>#{}\n<!channel_id/>{}\n<!message/>{}",
+                message.author.display_name(),
+                message.author.name,
+                message.author.id,
+                Utc::now().format("%d-%m-%Y %H:%M:%S"),
+                message.id,
+                channel.name.clone().unwrap_or(String::from("n-a")),
+                channel.id,
+                content
+            );
 
             instance.push_message(InstanceMessage {
-                is_user: true,
-                content: format!(
-                    "<{} (@{})>: {content}",
-                    message.author.display_name(),
-                    message.author.name
-                ),
-                image_url: image_url.clone(),
+                is_assistant: false,
+                text: formated_content,
+                user_id: message.author.id.get(),
+                image_url: None,
             });
 
             instance.is_awaiting_new_messages = false;
             instance.last_received_message_timestamp +=
-                StdRng::from_entropy().gen_range(3..=5) + len;
+                StdRng::from_os_rng().random_range(1..=3) + len;
 
             if author.bot {
                 instance.last_sent_message_timestamp +=
-                    StdRng::from_entropy().gen_range(6..=15) + len;
+                    StdRng::from_os_rng().random_range(2..=4) + len;
 
                 if Probability::new(30).generate_random_bool() {
                     instance.is_awaiting_new_messages = true;
@@ -154,6 +164,11 @@ impl EventHandler {
     }
 
     pub async fn guild_create(self, guild_create: Box<GuildCreate>) -> anyhow::Result<()> {
+        let guild_create = match *guild_create {
+            GuildCreate::Available(guild) => guild,
+            _ => return Ok(()),
+        };
+
         let client_user = self.client.current_user().await?;
         let mut guild_data = self.database.guilds().get_by_guild(guild_create.id).await?;
 
@@ -184,13 +199,13 @@ impl EventHandler {
                         name: "Fui adicionado aqui!".to_string(),
                         icon_url: Some(client_user.avatar_url()),
                     })
-                    .set_description("## Olá! 👋\nEu me chamo **Zenis**. Sou um bot de inteligência artificial!\nO seu servidor recebeu **50₢** de créditos públicos (`/servidor`) para testar.\n\nUse **/invocar** para começar a conversar com algum bot!\n**/tutorial** mostra mais comandos úteis.\n\nAproveite! :heart:");
+                    .set_description("## Olá! 👋\nEu me chamo **Zenis**. Sou um bot onde você pode conversar com qualquer personagem e criar seus próprios agentes de IA pra conversar!\nO seu servidor recebeu **50₢** de créditos públicos (`/servidor`) para usar meus comandos.\n\nUse **/invocar** para começar a conversar com algum bot!\n**/tutorial** mostra mais comandos úteis.\n\nAproveite! :heart:");
 
                 if self
                     .client
                     .http
                     .create_message(channel.id)
-                    .embeds(&[embed.build()])?
+                    .embeds(&[embed.build()])
                     .await
                     .is_ok()
                 {

@@ -1,11 +1,8 @@
 use crate::{CommandBuilder, CommandContext};
 use zenis_discord::twilight_model::id::{marker::ApplicationMarker, Id};
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct CommandConfig {
-    pub character_required: bool,
-    pub city_required: bool,
-}
+#[derive(Debug, Clone)]
+pub struct CommandConfig;
 
 #[async_trait::async_trait]
 pub trait Command {

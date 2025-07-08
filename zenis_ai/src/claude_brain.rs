@@ -60,7 +60,7 @@ impl Brain for ClaudeBrain {
             model: "claude-3-haiku-20240307".to_string(),
             max_tokens: 300,
             system_prompt: String::new(),
-            strip_italic_actions: true,
+            strip_italic_actions: false,
         }
     }
 
@@ -151,19 +151,6 @@ impl Brain for ClaudeBrain {
                 reply.text = reply.text.as_ref().map(|t| remove_italic_actions(t));
             });
         }
-
-        response.content.iter_mut().for_each(|reply| {
-            let Some(content) = &mut reply.text else {
-                return;
-            };
-
-            let text = content.to_uppercase().trim().to_owned();
-            if text.contains("{AWAIT}") {
-                *content = "{AWAIT}".to_string();
-            } else if text.contains("{EXIT}") {
-                *content = "{EXIT}".to_string();
-            }
-        });
 
         Ok(ChatResponse {
             message: ChatMessage {

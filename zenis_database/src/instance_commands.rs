@@ -25,7 +25,7 @@ impl InstanceCommands {
         instance.active = instance.exit_reason.is_none();
         CACHE_ID.remove(&instance.id);
         self.collection
-            .replace_one(query_by_id(instance.id), &instance, None)
+            .replace_one(query_by_id(instance.id), &instance)
             .await?;
         Ok(())
     }
@@ -44,7 +44,7 @@ impl InstanceCommands {
         match cached {
             Some(model) => Ok(Some(model)),
             None => {
-                let Some(model) = self.collection.find_one(query, None).await? else {
+                let Some(model) = self.collection.find_one(query).await? else {
                     return Ok(None);
                 };
 
@@ -56,9 +56,7 @@ impl InstanceCommands {
 
     pub async fn delete_instance(&self, instance_id: ObjectId) -> anyhow::Result<()> {
         CACHE_ID.remove(&instance_id);
-        self.collection
-            .delete_one(query_by_id(instance_id), None)
-            .await?;
+        self.collection.delete_one(query_by_id(instance_id)).await?;
         Ok(())
     }
 
@@ -73,7 +71,7 @@ impl InstanceCommands {
 
         Ok(self
             .collection
-            .find(query, None)
+            .find(query)
             .await?
             .collect::<Result<Vec<_>, _>>()
             .await?)
@@ -82,7 +80,7 @@ impl InstanceCommands {
     pub async fn all_actives(&self) -> anyhow::Result<Vec<InstanceModel>> {
         Ok(self
             .collection
-            .find(doc! { "active": true }, None)
+            .find(doc! { "active": true })
             .await?
             .collect::<Result<Vec<_>, _>>()
             .await?)
@@ -91,7 +89,7 @@ impl InstanceCommands {
     pub async fn all_inactives(&self) -> anyhow::Result<Vec<InstanceModel>> {
         Ok(self
             .collection
-            .find(doc! { "active": false }, None)
+            .find(doc! { "active": false })
             .await?
             .collect::<Result<Vec<_>, _>>()
             .await?)
@@ -108,14 +106,14 @@ impl InstanceCommands {
 
         Ok(self
             .collection
-            .find(query, None)
+            .find(query)
             .await?
             .collect::<Result<Vec<_>, _>>()
             .await?)
     }
 
     pub async fn create_instance(&self, instance_model: InstanceModel) -> anyhow::Result<()> {
-        self.collection.insert_one(instance_model, None).await?;
+        self.collection.insert_one(instance_model).await?;
 
         Ok(())
     }

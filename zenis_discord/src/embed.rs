@@ -1,11 +1,11 @@
 use twilight_model::{
     channel::message::{
+        Embed as APIEmbed,
         embed::{
             EmbedAuthor as APIEmbedAuthor, EmbedField as APIEmbedField,
             EmbedFooter as APIEmbedFooter, EmbedImage as APIEmbedImage,
             EmbedThumbnail as APIEmbedThumbnail,
         },
-        Embed as APIEmbed,
     },
     user::User,
     util::Timestamp,
@@ -13,6 +13,7 @@ use twilight_model::{
 
 use crate::UserExtension;
 
+use super::Emoji;
 use zenis_common::Color;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -177,16 +178,6 @@ impl EmbedBuilder {
         self
     }
 
-    pub fn add_description_text(mut self, description: impl ToString) -> Self {
-        if let Some(embed_description) = &mut self.embed.description {
-            embed_description.push_str(&description.to_string());
-        } else {
-            self = self.set_description(description);
-        }
-
-        self
-    }
-
     pub fn add_footer_text(mut self, text: impl ToString) -> Self {
         if let Some(footer) = &self.embed.footer {
             let new_footer = EmbedFooter {
@@ -227,8 +218,8 @@ impl EmbedBuilder {
         self
     }
 
-    pub fn add_field_with_emoji(self, emoji: impl Into<String>, mut field: EmbedField) -> Self {
-        field.name = format!("{} {}", emoji.into(), field.name);
+    pub fn add_field_with_emoji(self, emoji: Emoji, mut field: EmbedField) -> Self {
+        field.name = format!("{} {}", emoji, field.name);
         self.add_field(field)
     }
 

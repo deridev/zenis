@@ -54,20 +54,14 @@ impl ZenisDatabase {
     pub async fn setup(&self) {
         let users: Collection<UserModel> = self.db().collection("users");
         users
-            .create_index(
-                IndexModel::builder().keys(doc! { "user_id": 1 }).build(),
-                None,
-            )
+            .create_index(IndexModel::builder().keys(doc! { "user_id": 1 }).build())
             .await
             .unwrap();
 
         // GUILD INDEXES
         let guilds: Collection<GuildModel> = self.db().collection("guilds");
         guilds
-            .create_index(
-                IndexModel::builder().keys(doc! { "guild_id": 1 }).build(),
-                None,
-            )
+            .create_index(IndexModel::builder().keys(doc! { "guild_id": 1 }).build())
             .await
             .unwrap();
 
@@ -78,7 +72,6 @@ impl ZenisDatabase {
                 IndexModel::builder()
                     .keys(doc! { "identifier": 1, "tags": 1 })
                     .build(),
-                None,
             )
             .await
             .unwrap();
@@ -86,10 +79,7 @@ impl ZenisDatabase {
         // INSTANCE INDEXES
         let instances: Collection<InstanceModel> = self.db().collection("instances");
         instances
-            .create_index(
-                IndexModel::builder().keys(doc! { "channel_id": 1 }).build(),
-                None,
-            )
+            .create_index(IndexModel::builder().keys(doc! { "channel_id": 1 }).build())
             .await
             .unwrap();
     }

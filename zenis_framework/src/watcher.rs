@@ -2,6 +2,7 @@ use std::time::Duration;
 
 use tokio_stream::StreamExt;
 use zenis_discord::{
+    modal::ModalInteractionData,
     twilight_gateway::Event,
     twilight_model::{
         channel::Message,
@@ -15,7 +16,7 @@ use zenis_discord::{
         future::{WaitForComponentStream, WaitForMessageStream},
         Standby,
     },
-    Interaction,
+    Interaction, InteractionData, InteractionType, ModalResponse,
 };
 
 #[derive(Debug, Clone)]
@@ -66,6 +67,49 @@ impl Watcher {
         Ok(Some(message))
     }
 
+    pub async fn await_single_modal<F: Fn(&Interaction) -> bool + Sync + Send + 'static>(
+        &self,
+        custom_id: impl Into<String>,
+        filter: F,
+        options: WatcherOptions,
+    ) -> anyhow::Result<Option<ModalResponse>> {
+        let custom_id: String = custom_id.into();
+
+        let stream = self
+            .standby
+            .wait_for_event_stream(move |event: &Event| match event {
+                Event::InteractionCreate(interaction) => {
+                    let Some(modal_submit) = get_modal_submit(&interaction) else {
+                        return false;
+                    };
+
+                    modal_submit.custom_id == custom_id && filter(&interaction)
+                }
+                _ => false,
+            })
+            .timeout(options.timeout);
+        tokio::pin!(stream);
+
+        let Some(event) = stream.next().await else {
+            return Ok(None);
+        };
+
+        let event = event?;
+        match event {
+            Event::InteractionCreate(interaction) => {
+                let Some(modal_submit) = get_modal_submit(&interaction) else {
+                    return Ok(None);
+                };
+
+                Ok(Some(ModalResponse::new(
+                    interaction.0.clone(),
+                    modal_submit,
+                )))
+            }
+            _ => Ok(None),
+        }
+    }
+
     pub async fn await_single_component<F: Fn(&Interaction) -> bool + Sync + Send + 'static>(
         &self,
         message_id: Id<MessageMarker>,
@@ -107,5 +151,16 @@ impl Watcher {
         self.standby
             .wait_for_component_stream(message_id, filter)
             .timeout(options.timeout)
+    }
+}
+
+fn get_modal_submit(interaction: &Interaction) -> Option<ModalInteractionData> {
+    if interaction.kind != InteractionType::ModalSubmit {
+        return None;
+    }
+
+    match &interaction.data {
+        Some(InteractionData::ModalSubmit(modal_submit)) => Some(modal_submit.clone()),
+        _ => None,
     }
 }

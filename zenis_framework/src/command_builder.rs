@@ -23,6 +23,7 @@ impl CommandBuilder {
         name: impl Into<String>,
         description: impl Into<String>,
     ) -> Self {
+        #[allow(deprecated)]
         Self {
             command: ApiCommand {
                 application_id: Some(application_id),
@@ -31,13 +32,15 @@ impl CommandBuilder {
                 default_member_permissions: None,
                 name_localizations: None,
                 description_localizations: None,
-                dm_permission: None,
                 guild_id: None,
                 id: None,
                 nsfw: None,
                 kind: CommandType::ChatInput,
                 options: vec![],
                 version: Id::new(1),
+                contexts: None,
+                integration_types: None,
+                dm_permission: None,
             },
         }
     }

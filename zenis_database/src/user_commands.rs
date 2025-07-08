@@ -26,7 +26,7 @@ impl UserCommands {
         CACHE_ID.remove(&user_data.id);
         CACHE_USER_ID.remove(&user_data.user_id);
         self.collection
-            .replace_one(query_by_id(user_data.id), &user_data, None)
+            .replace_one(query_by_id(user_data.id), &user_data)
             .await?;
         Ok(())
     }
@@ -46,7 +46,7 @@ impl UserCommands {
         match cached {
             Some(model) => Ok(Some(model)),
             None => {
-                let Some(model) = self.collection.find_one(query, None).await? else {
+                let Some(model) = self.collection.find_one(query).await? else {
                     return Ok(None);
                 };
 
@@ -73,7 +73,7 @@ impl UserCommands {
 
     pub async fn create_user_data(&self, user_id: Id<UserMarker>) -> anyhow::Result<UserModel> {
         let user_data = UserModel::new(user_id);
-        self.collection.insert_one(user_data.clone(), None).await?;
+        self.collection.insert_one(user_data.clone()).await?;
 
         Ok(user_data)
     }

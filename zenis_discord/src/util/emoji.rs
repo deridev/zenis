@@ -1,9 +1,9 @@
 use twilight_model::{
-    channel::message::ReactionType,
-    id::{marker::EmojiMarker, Id},
+    channel::message::EmojiReactionType,
+    id::{Id, marker::EmojiMarker},
 };
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Emoji<'a> {
     Unicode(&'a str),
     Custom {
@@ -19,21 +19,6 @@ impl<'a> From<Emoji<'a>> for String {
     }
 }
 
-impl<'a> From<Emoji<'a>> for ReactionType {
-    fn from(val: Emoji<'a>) -> Self {
-        match val {
-            Emoji::Unicode(emoji) => ReactionType::Unicode {
-                name: emoji.to_string(),
-            },
-            Emoji::Custom { animated, id, name } => ReactionType::Custom {
-                animated,
-                id,
-                name: name.map(ToString::to_string),
-            },
-        }
-    }
-}
-
 impl<'a> std::fmt::Display for Emoji<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -46,6 +31,21 @@ impl<'a> std::fmt::Display for Emoji<'a> {
                     write!(f, "<:{}:{id}>", name)
                 }
             }
+        }
+    }
+}
+
+impl<'a> From<Emoji<'a>> for EmojiReactionType {
+    fn from(value: Emoji<'a>) -> Self {
+        match value {
+            Emoji::Custom { animated, id, name } => EmojiReactionType::Custom {
+                animated,
+                id,
+                name: name.map(|s| s.to_string()),
+            },
+            Emoji::Unicode(unicode) => EmojiReactionType::Unicode {
+                name: unicode.to_string(),
+            },
         }
     }
 }

@@ -69,30 +69,13 @@ pub fn command(attr: TokenStream2, input: TokenStream2) -> Result<TokenStream2> 
 
     let struct_name = format_ident!("{}Command", capitalize(&name));
 
-    let character_required = util::get_attribute_argument_literal(&attrs, "character_required")
-        .map(|lit| match lit {
-            Lit::Bool(bool) => bool.value,
-            _ => false,
-        })
-        .unwrap_or_default();
-
-    let city_required = util::get_attribute_argument_literal(&attrs, "city_required")
-        .map(|lit| match lit {
-            Lit::Bool(bool) => bool.value,
-            _ => false,
-        })
-        .unwrap_or_default();
-
     // generate the code for the struct and impl
     let expanded = quote! {
         #vis struct #struct_name;
         #[async_trait]
         impl ZenisCommand for #struct_name {
             fn command_config(&self) -> CommandConfig {
-                CommandConfig {
-                    character_required: #character_required,
-                    city_required: #city_required,
-                }
+                CommandConfig
             }
 
             fn build_command(&self, application_id: Id<ApplicationMarker>) -> CommandBuilder {

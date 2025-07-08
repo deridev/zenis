@@ -1,7 +1,7 @@
 mod command_handler;
 mod event_handler;
 
-use std::{net::SocketAddr, str::FromStr, sync::Arc, time::Duration};
+use std::{collections::HashMap, net::SocketAddr, str::FromStr, sync::Arc, time::Duration};
 
 use chrono::Utc;
 pub use event_handler::EventHandler;
@@ -9,6 +9,7 @@ pub use event_handler::EventHandler;
 use warp::{reply::Response, Filter};
 use zenis_ai::{
     common::{ChatMessage, Role},
+    template::to_assistant_object,
     util::process_instance_message_queue,
 };
 use zenis_common::{config, Color};
@@ -19,16 +20,12 @@ use zenis_database::{
     transaction::CreditDestination,
     DatabaseState, ZenisDatabase,
 };
+
 use zenis_discord::{
-    twilight_gateway::{
-        stream::{self, ShardEventStream},
-        Config, Intents,
-    },
+    twilight_gateway::{EventTypeFlags, Intents, Shard, ShardId, StreamExt},
     twilight_model::id::Id,
     DiscordHttpClient, EmbedBuilder,
 };
-
-use tokio_stream::StreamExt;
 use zenis_framework::{watcher::Watcher, ZenisClient};
 use zenis_payment::mp::{client::MercadoPagoClient, notification::NotificationPayload};
 
@@ -49,7 +46,6 @@ async fn main() {
         | Intents::MESSAGE_CONTENT
         | Intents::GUILD_MEMBERS
         | Intents::GUILDS;
-    let config = Config::new(discord_token.clone(), intents);
 
     let mp_client = MercadoPagoClient::new(
         config::DEBUG,
@@ -73,14 +69,11 @@ async fn main() {
 
     database.setup().await;
 
-    let client = Arc::new(ZenisClient::new(discord_token, Arc::new(mp_client)));
+    let client = Arc::new(ZenisClient::new(discord_token.clone(), Arc::new(mp_client)));
     let watcher = Arc::new(Watcher::new());
 
     // Load a single shard
-    let mut shards =
-        stream::create_range(0..1, 1, config, |_, builder| builder.build()).collect::<Vec<_>>();
-
-    let mut stream = ShardEventStream::new(shards.iter_mut());
+    let mut shard = Shard::new(ShardId::ONE, discord_token.clone(), intents);
 
     // Payment API thread
     {
@@ -165,12 +158,27 @@ async fn main() {
         let client = client.clone();
         let db = database.clone();
         tokio::spawn(async move {
+            let mut channel_indexer = 0;
             loop {
-                tokio::time::sleep(Duration::from_secs(10)).await;
+                tokio::time::sleep(Duration::from_secs(3)).await;
 
                 let http = client.http.clone();
                 let instances = db.instances().all_actives().await.unwrap_or_default();
-                for mut instance in instances {
+
+                // Map instances to channel_ids
+                let mut instances_by_channel_id: HashMap<u64, Vec<InstanceModel>> = HashMap::with_capacity(instances.len());
+                for instance in instances {
+                    let channel_id = instance.channel_id;
+                    instances_by_channel_id.entry(channel_id).or_default().push(instance);
+                }
+
+                for instances in instances_by_channel_id.values_mut() {
+                    if instances.is_empty() {
+                        continue;
+                    }
+
+                    let index = channel_indexer % instances.len();
+                    let instance = &mut instances[index];
                     let result = process_instance(
                         http.clone(),
                         client.clone(),
@@ -201,19 +209,16 @@ async fn main() {
 
                 client.delete_off_instances(db.clone()).await.ok();
                 db.transactions().delete_expired_transactions().await.ok();
+                channel_indexer += 1;
             }
         });
     }
 
-    while let Some((_shard, event)) = stream.next().await {
+    while let Some(event) = shard.next_event(EventTypeFlags::all()).await {
         let event = match event {
-            std::result::Result::Ok(event) => event,
-            Err(source) => {
-                if source.is_fatal() {
-                    eprintln!("FATAL ERROR: {:?}", source);
-                    break;
-                }
-
+            Ok(event) => event,
+            Err(error) => {
+                eprintln!("{}", error);
                 continue;
             }
         };
@@ -234,7 +239,7 @@ async fn process_instance(
     }
 
     let diff = Utc::now().timestamp() - instance.last_sent_message_timestamp;
-    if diff < 10 {
+    if diff < 7 {
         return Ok(());
     }
 
@@ -249,12 +254,12 @@ async fn process_instance(
         .map(|(index, m)| {
             let is_last = index == instance.history.len() - 1;
             ChatMessage {
-                role: if m.is_user {
-                    Role::User
-                } else {
+                role: if m.is_assistant {
                     Role::Assistant
+                } else {
+                    Role::User
                 },
-                content: m.content.clone(),
+                content: m.text.clone(),
                 image_url: if is_last {
                     if m.image_url.is_some() && !image_processed {
                         image_processed = true;
@@ -298,21 +303,28 @@ async fn process_instance(
     }
 
     let response_content = response.message.content.clone();
+    let assistant_object = to_assistant_object(&response_content);
 
-    if response_content.is_empty() || response_content.contains("{AWAIT}") {
+    if assistant_object.is_noreply {
+        instance.is_awaiting_new_messages = true;
+        instance.last_sent_message_timestamp = Utc::now().timestamp() + 3;
         return Ok(());
     }
 
-    if response_content.contains("{EXIT}") {
-        instance.exit_reason = Some("O agente saiu por conta própria".to_string());
+    if let Some(exit_reason) = assistant_object.exit_reason {
+        instance.exit_reason = Some(exit_reason);
         database.instances().save(instance).await?;
         return Ok(());
     }
 
+    let Some(message) = assistant_object.message else {
+        return Ok(());
+    };
+
     let (webhook_id, token) = (instance.webhook_id, instance.webhook_token.clone());
 
     http.execute_webhook(Id::new(webhook_id), &token)
-        .content(&response_content)?
+        .content(&message)
         .await
         .ok();
 
@@ -435,7 +447,7 @@ pub async fn process_mp_notification(
             client
                 .http
                 .create_message(dm_channel.id)
-                .embeds(&[embed.build()])?
+                .embeds(&[embed.build()])
                 .await?;
             return Ok(());
         }
@@ -450,7 +462,7 @@ pub async fn process_mp_notification(
             client
                 .http
                 .create_message(dm_channel.id)
-                .embeds(&[embed.build()])?
+                .embeds(&[embed.build()])
                 .await?;
 
             client
@@ -510,7 +522,7 @@ pub async fn process_mp_notification(
     client
         .http
         .create_message(dm_channel.id)
-        .embeds(&[embed.build()])?
+        .embeds(&[embed.build()])
         .await?;
 
     client

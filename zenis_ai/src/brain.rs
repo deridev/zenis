@@ -85,6 +85,14 @@ pub trait Brain {
         DEFAULT_CLIENT.clone()
     }
 
+    async fn prompt_raw(
+        &self,
+        params: BrainParameters,
+        messages: Vec<ChatMessage>,
+    ) -> anyhow::Result<ChatResponse> {
+        self.prompt_chat(params, messages).await
+    }
+
     async fn prompt_chat(
         &self,
         params: BrainParameters,

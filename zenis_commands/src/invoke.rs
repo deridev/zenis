@@ -32,13 +32,19 @@ pub async fn invoke(mut ctx: CommandContext) -> anyhow::Result<()> {
         return Ok(());
     };
 
+    let Some(guild_id) = channel.guild_id else {
+        return Ok(());
+    };
+
+    let guild = ctx.client.get_guild(guild_id).await?;
+
     if ctx
         .db()
         .instances()
         .get_all_by_channel(channel.id.get())
         .await?
         .len()
-        > 1
+        > 2
     {
         ctx.reply(
             Response::new_user_reply(&author, "já há muitos agentes neste chat!")
@@ -230,7 +236,7 @@ pub async fn invoke(mut ctx: CommandContext) -> anyhow::Result<()> {
         .get_all_by_channel(channel.id.get())
         .await?;
 
-    if channel_instances.len() > 1 {
+    if channel_instances.len() > 2 {
         ctx.send(
             Response::new_user_reply(&author, "já há muitos agentes neste chat!")
                 .add_emoji_prefix(emojis::ERROR),
@@ -268,6 +274,10 @@ pub async fn invoke(mut ctx: CommandContext) -> anyhow::Result<()> {
     }
 
     let message = ctx.send(embed).await?;
+    let system_prompt = format!(
+        "[Zenis Agent System 1.0]\n<!agent_name/>{}\n<!agent_description/>{}\n<!agent_user_id/>%WEBHOOK_ID%\n<!guild>{}\n<!owner_id/>{}", 
+        agent.name, agent.description, guild.name, guild.owner_id
+    );
 
     let result = ctx
         .client
@@ -278,6 +288,7 @@ pub async fn invoke(mut ctx: CommandContext) -> anyhow::Result<()> {
             agent.clone(),
             pricing,
             payment_method,
+            system_prompt,
         )
         .await;
 
@@ -414,13 +425,13 @@ pub async fn ask_for_brain(ctx: &mut CommandContext) -> anyhow::Result<InstanceB
 
     let buttons = vec![
         ButtonBuilder::new()
-            .set_custom_id("cohere_command_r")
-            .set_label("Command-R")
-            .set_style(ButtonStyle::Secondary),
+            .set_custom_id("gemini_flash")
+            .set_label("Flash")
+            .set_style(ButtonStyle::Primary),
         ButtonBuilder::new()
-            .set_custom_id("claude_haiku")
-            .set_label("Haiku")
-            .set_style(ButtonStyle::Secondary),
+            .set_custom_id("gemini_pro")
+            .set_label("Pro")
+            .set_style(ButtonStyle::Primary),
     ];
 
     let embed = EmbedBuilder::new_common()
@@ -429,7 +440,7 @@ pub async fn ask_for_brain(ctx: &mut CommandContext) -> anyhow::Result<InstanceB
             name: "Seleção de Cérebro".to_string(),
             icon_url: Some(author.avatar_url()),
         })
-        .set_description(format!("## {} Escolha qual cérebro você quer no seu agente:\n\n⚡ **Command-R**: Menos carismático, mais rápido e não consegue ver imagens.\n\n💪 **Haiku**: mais carismático e consegue ver imagens. 5 créditos extra pra cada imagem.\n\nNão sabe qual usar? **Haiku** vale mais a pena!", "🧠"));
+        .set_description(format!("## {} Escolha qual cérebro você quer no seu agente:\n\n⚡ **Flash**: Modelo rápido, menos inteligente e mais barato!\n\n💪 **Pro**: Modelo mais inteligente, mais caro e mais lento!", "🧠"));
 
     let message = ctx
         .send(
@@ -481,8 +492,10 @@ pub async fn ask_for_brain(ctx: &mut CommandContext) -> anyhow::Result<InstanceB
         .ok();
 
     match data.custom_id.as_str() {
-        "cohere_command_r" => Ok(InstanceBrain::CohereCommandR),
+        "gemini_flash" => Ok(InstanceBrain::GeminiFlash),
+        "gemini_pro" => Ok(InstanceBrain::GeminiPro),
         "claude_haiku" => Ok(InstanceBrain::ClaudeHaiku),
+        "zenis_finetuned" => Ok(InstanceBrain::ZenisFinetuned),
         _ => Ok(InstanceBrain::ClaudeHaiku),
     }
 }

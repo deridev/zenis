@@ -406,7 +406,7 @@ pub async fn adm(
             ctx.client
                 .http
                 .create_message(dm.id)
-                .embeds(&[embed.build()])?
+                .embeds(&[embed.build()])
                 .await
                 .ok();
         }
@@ -462,7 +462,7 @@ pub async fn adm(
             ctx.client
                 .http
                 .create_message(dm.id)
-                .embeds(&[embed.build()])?
+                .embeds(&[embed.build()])
                 .await
                 .ok();
         }
@@ -526,7 +526,7 @@ pub async fn adm(
                 guilds
             };
 
-            all_guilds.shuffle(&mut StdRng::from_entropy());
+            all_guilds.shuffle(&mut StdRng::from_os_rng());
 
             let guilds = all_guilds.into_iter().take(amount_of_guilds as usize);
 
@@ -550,7 +550,7 @@ pub async fn adm(
                         .client
                         .http
                         .create_message(channel.id)
-                        .embeds(&[embed.build()])?
+                        .embeds(&[embed.build()])
                         .await
                         .is_ok()
                     {

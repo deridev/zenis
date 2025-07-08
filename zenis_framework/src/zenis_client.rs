@@ -6,6 +6,7 @@ use std::{
         Arc,
     },
 };
+use zenis_ai::template::to_assistant_object;
 use zenis_common::{config, load_image_from_url, Color};
 use zenis_data::products::Product;
 use zenis_database::{
@@ -17,7 +18,6 @@ use zenis_database::{
 };
 use zenis_discord::{
     twilight_model::{
-        gateway::payload::incoming::GuildCreate,
         guild::Guild,
         id::{
             marker::{ChannelMarker, GuildMarker, UserMarker},
@@ -99,6 +99,7 @@ impl ZenisClient {
         agent_model: AgentModel,
         pricing: AgentPricing,
         payment_method: CreditsPaymentMethod,
+        mut system_prompt: String,
     ) -> anyhow::Result<()> {
         let mut agent_model = db
             .agents()
@@ -110,11 +111,13 @@ impl ZenisClient {
             None => None,
         };
 
-        let webhook = self.http.create_webhook(channel_id, &agent_model.name)?;
+        let webhook = self.http.create_webhook(channel_id, &agent_model.name);
         let webhook = match image {
             None => webhook.await?.model().await?,
             Some(image) => webhook.avatar(&image.to_data_uri()).await?.model().await?,
         };
+
+        system_prompt = system_prompt.replace("%WEBHOOK_ID%", &webhook.id.to_string());
 
         let Some(token) = webhook.token.clone() else {
             self.http.delete_webhook(webhook.id).await?;
@@ -131,14 +134,23 @@ impl ZenisClient {
                 webhook.token.context("Expected a HookToken")?,
             ),
             payment_method,
+            system_prompt,
         );
 
         let introduction_message = instance.introduce(agent_model.introduction_message.clone());
-        self.http
-            .execute_webhook(webhook.id, &token)
-            .content(&introduction_message.content)?
-            .await
-            .ok();
+        instance.already_introduced = true;
+
+        let assistant_object = to_assistant_object(&introduction_message.text);
+
+        if let Some(message) = assistant_object.message {
+            if !assistant_object.is_noreply {
+                self.http
+                    .execute_webhook(webhook.id, &token)
+                    .content(&message)
+                    .await
+                    .ok();
+            }
+        }
 
         db.instances().create_instance(instance).await?;
 
@@ -178,14 +190,11 @@ impl ZenisClient {
                 .build()];
             let embeds = &embeds;
 
-            if let Ok(create_message) = self
-                .http
+            self.http
                 .create_message(Id::new(instance.channel_id))
                 .embeds(embeds)
-            {
-                create_message.await.ok();
-            }
-
+                .await
+                .ok();
             let channel_instances = db
                 .instances()
                 .all_actives_in_channel(instance.channel_id)
@@ -193,8 +202,9 @@ impl ZenisClient {
             for mut channel_instance in channel_instances {
                 channel_instance.is_awaiting_new_messages = false;
                 channel_instance.push_message(InstanceMessage {
-                    is_user: true,
-                    content: format!("<{} saiu do chat. Motivo: {}>", agent.name, exit_reason),
+                    is_assistant: false,
+                    user_id: instance.webhook_id,
+                    text: format!("<!agent_exit/>{}\n<!reason/>{}", agent.name, exit_reason),
                     image_url: None,
                 });
                 db.instances().save(channel_instance).await?;
@@ -279,7 +289,7 @@ impl ZenisClient {
 
         self.http
             .execute_webhook(Id::new(hook_id), &hook_token)
-            .embeds(&[embed])?
+            .embeds(&[embed])
             .await?;
 
         Ok(())
@@ -323,7 +333,7 @@ impl ZenisClient {
 
         self.http
             .execute_webhook(Id::new(hook_id), &hook_token)
-            .embeds(&[embed])?
+            .embeds(&[embed])
             .await?;
 
         Ok(())
@@ -367,15 +377,12 @@ impl ZenisClient {
 
         self.http
             .execute_webhook(Id::new(hook_id), &hook_token)
-            .embeds(&[embed.build()])?
+            .embeds(&[embed.build()])
             .await?;
         Ok(())
     }
 
-    pub async fn emit_guild_create_hook(
-        &self,
-        guild_create: Box<GuildCreate>,
-    ) -> anyhow::Result<()> {
+    pub async fn emit_guild_create_hook(&self, guild: Guild) -> anyhow::Result<()> {
         if config::DEBUG {
             return Ok(());
         }
@@ -383,13 +390,6 @@ impl ZenisClient {
         let hook_id = std::env::var("GUILD_HOOK_ID")?.parse::<u64>()?;
         let hook_token = std::env::var("GUILD_HOOK_TOKEN")?;
 
-        let guild = self
-            .http
-            .guild(guild_create.id)
-            .with_counts(true)
-            .await?
-            .model()
-            .await?;
         let member_count = guild
             .approximate_member_count
             .map(|m| m.to_string())
@@ -411,7 +411,7 @@ impl ZenisClient {
 
         self.http
             .execute_webhook(Id::new(hook_id), &hook_token)
-            .embeds(&[embed.build()])?
+            .embeds(&[embed.build()])
             .await?;
         Ok(())
     }

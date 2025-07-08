@@ -1,12 +1,13 @@
 use chrono::Utc;
 use regex::Regex;
-use zenis_database::instance_model::{InstanceBrain, InstanceModel};
+use zenis_database::instance_model::{InstanceBrain, InstanceMessage, InstanceModel};
 
 use crate::{
     brain::Brain,
     claude_brain::ClaudeBrain,
-    cohere_brain::CohereBrain,
     common::{ChatMessage, ChatResponse},
+    gemini_brain::{GeminiBrain, GeminiModel},
+    openai_brain::{OpenAIBrain, OpenAIModel},
 };
 
 pub fn remove_italic_actions(input: &str) -> String {
@@ -23,10 +24,15 @@ pub async fn process_instance_message_queue(
     let brain = get_brain(instance.brain);
     let mut parameters = brain.default_parameters();
     parameters.debug = debug;
-    parameters.system_prompt = instance.agent_description.clone();
+    parameters.system_prompt = instance.system_prompt.clone();
 
-    let response = brain.prompt_chat(parameters, messages.clone()).await?;
-    instance.push_message(response.clone());
+    let response = brain.prompt_raw(parameters, messages.clone()).await?;
+    instance.push_message(InstanceMessage {
+        image_url: None,
+        is_assistant: true,
+        user_id: instance.webhook_id,
+        text: response.message.content.clone(),
+    });
 
     instance.last_sent_message_timestamp = Utc::now().timestamp() + 3;
 
@@ -35,7 +41,15 @@ pub async fn process_instance_message_queue(
 
 pub fn get_brain(brain: InstanceBrain) -> Box<dyn Brain + Send + Sync + 'static> {
     match brain {
-        InstanceBrain::CohereCommandR => Box::new(CohereBrain),
+        InstanceBrain::GeminiFlash => Box::new(GeminiBrain {
+            model: GeminiModel::Flash25,
+        }),
+        InstanceBrain::GeminiPro => Box::new(GeminiBrain {
+            model: GeminiModel::Pro25,
+        }),
         InstanceBrain::ClaudeHaiku => Box::new(ClaudeBrain),
+        InstanceBrain::ZenisFinetuned => Box::new(OpenAIBrain {
+            model: OpenAIModel::Finetuned,
+        }),
     }
 }

@@ -19,4 +19,4 @@ bson = { workspace = true }
 rand = { workspace = true }
 unidecode = { workspace = true }
 tokio-stream = { workspace = true }
-mongodb = "2.8"
+mongodb = "3.2.4"

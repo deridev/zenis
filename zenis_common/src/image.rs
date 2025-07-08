@@ -1,4 +1,5 @@
 use base64::Engine;
+use mime::Mime;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Base64Image {
@@ -16,17 +17,32 @@ pub async fn load_image_from_url(url: &str) -> anyhow::Result<Base64Image> {
     let client = reqwest::Client::new();
     let response = client.get(url).send().await?;
 
-    let mime_type = response
+    let content_type = response
         .headers()
         .get("Content-Type")
         .and_then(|ct| ct.to_str().ok())
-        .map(|ct| ct.to_lowercase())
-        .unwrap_or_else(|| "image/jpeg".to_owned());
+        .unwrap_or("application/octet-stream");
 
-    const SUPPORTED_MIME_TYPES: &[&str] = &["image/png", "image/jpeg", "image/jpg"];
-    if !SUPPORTED_MIME_TYPES.contains(&mime_type.as_str()) {
-        return Err(anyhow::anyhow!("Unsupported image format: {}", mime_type));
-    }
+    let mime: Mime = content_type.parse()?;
+
+    let mime_type = if mime.type_() == mime::IMAGE {
+        match mime.subtype().as_str() {
+            "png" => "image/png",
+            "jpeg" | "jpg" => "image/jpeg",
+            "gif" => "image/gif",
+            "webp" => "image/webp",
+            "svg+xml" => "image/svg+xml",
+            "tiff" => "image/tiff",
+            "bmp" => "image/bmp",
+            "x-icon" => "image/x-icon",
+            other => other, // Allow other image subtypes
+        }
+    } else {
+        return Err(anyhow::anyhow!(
+            "Unsupported content type: {}",
+            content_type
+        ));
+    };
 
     let response_bytes = response.bytes().await?;
 
@@ -34,7 +50,7 @@ pub async fn load_image_from_url(url: &str) -> anyhow::Result<Base64Image> {
     let base64_encoded = engine.encode(&response_bytes);
 
     Ok(Base64Image {
-        mime_type,
+        mime_type: mime_type.to_string(),
         data: base64_encoded,
     })
 }

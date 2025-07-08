@@ -58,7 +58,7 @@ impl TransactionCommands {
     pub async fn save(&self, transaction: TransactionModel) -> anyhow::Result<()> {
         CACHE_ID.remove(&transaction.id);
         self.collection
-            .replace_one(query_by_id(transaction.id), &transaction, None)
+            .replace_one(query_by_id(transaction.id), &transaction)
             .await?;
         Ok(())
     }
@@ -73,7 +73,7 @@ impl TransactionCommands {
         match cached {
             Some(model) => Ok(Some(model)),
             None => {
-                let Some(model) = self.collection.find_one(query, None).await? else {
+                let Some(model) = self.collection.find_one(query).await? else {
                     return Ok(None);
                 };
 
@@ -88,12 +88,12 @@ impl TransactionCommands {
     }
 
     pub async fn delete_transaction(&self, id: ObjectId) -> anyhow::Result<()> {
-        self.collection.delete_one(query_by_id(id), None).await?;
+        self.collection.delete_one(query_by_id(id)).await?;
         Ok(())
     }
 
     pub async fn create_transaction(&self, transaction: TransactionModel) -> anyhow::Result<()> {
-        self.collection.insert_one(transaction, None).await?;
+        self.collection.insert_one(transaction).await?;
 
         Ok(())
     }
@@ -101,7 +101,7 @@ impl TransactionCommands {
     pub async fn delete_expired_transactions(&self) -> anyhow::Result<()> {
         let now = chrono::Utc::now().timestamp();
         self.collection
-            .delete_many(doc! { "expires_at": { "$lt": now } }, None)
+            .delete_many(doc! { "expires_at": { "$lt": now } })
             .await?;
 
         Ok(())

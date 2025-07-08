@@ -131,7 +131,7 @@ pub async fn run_arena(
     payment_method: ArenaPaymentMethod,
     fighters: Vec<ArenaFighter>,
 ) -> anyhow::Result<()> {
-    let brain = InstanceBrain::ClaudeHaiku;
+    let brain = InstanceBrain::GeminiFlash;
 
     match payment_method {
         ArenaPaymentMethod::User(user_id) => {
@@ -179,7 +179,7 @@ pub async fn run_arena(
         error_counter: 0,
     };
 
-    let mut rng = StdRng::from_entropy();
+    let mut rng = StdRng::from_os_rng();
 
     while controller.is_active {
         let input = get_fighter_input(ctx, &controller, controller.current_fighter()).await?;
@@ -187,7 +187,7 @@ pub async fn run_arena(
         controller.history.push(ArenaMessage::Input(ArenaInput {
             character_name: controller.current_fighter().name.clone(),
             action: input.clone(),
-            luck: rng.gen_range(0..=100),
+            luck: rng.random_range(0..=100),
         }));
 
         let output = match controller.generate_output().await {

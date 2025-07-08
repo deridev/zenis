@@ -1,6 +1,6 @@
 use twilight_model::{
     application::interaction::{
-        message_component::MessageComponentInteractionData, Interaction, InteractionData,
+        Interaction, InteractionData, message_component::MessageComponentInteractionData,
     },
     guild::Guild,
     user::{CurrentUser, User},
@@ -50,7 +50,21 @@ impl UserExtension for CurrentUser {
     }
 
     fn display_name(&self) -> String {
-        self.name.clone()
+        self.name.to_owned()
+    }
+}
+
+pub trait InteractionExtension {
+    fn parse_message_component_data(&self) -> anyhow::Result<Box<MessageComponentInteractionData>>;
+}
+
+impl InteractionExtension for Interaction {
+    fn parse_message_component_data(&self) -> anyhow::Result<Box<MessageComponentInteractionData>> {
+        if let Some(InteractionData::MessageComponent(data)) = self.data.clone() {
+            Ok(data)
+        } else {
+            anyhow::bail!("invalid message component");
+        }
     }
 }
 
@@ -65,19 +79,5 @@ impl GuildExtension for Guild {
         };
 
         format!("https://cdn.discordapp.com/icons/{}/{}.png", self.id, icon)
-    }
-}
-
-pub trait InteractionExtension {
-    fn parse_message_component_data(&self) -> anyhow::Result<MessageComponentInteractionData>;
-}
-
-impl InteractionExtension for Interaction {
-    fn parse_message_component_data(&self) -> anyhow::Result<MessageComponentInteractionData> {
-        if let Some(InteractionData::MessageComponent(data)) = self.data.clone() {
-            Ok(data)
-        } else {
-            anyhow::bail!("invalid message component");
-        }
     }
 }

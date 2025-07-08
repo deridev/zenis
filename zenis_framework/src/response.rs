@@ -59,13 +59,6 @@ impl Response {
         }
     }
 
-    pub fn remove_all_attachments(self) -> Response {
-        Response {
-            attachments: Some(vec![]),
-            ..self
-        }
-    }
-
     pub fn set_attachments(self, attachments: Vec<Attachment>) -> Response {
         Response {
             attachments: Some(attachments),
@@ -85,6 +78,16 @@ impl Response {
             components: Some(components.into_iter().map(|c| c.into()).collect::<Vec<_>>()),
             ..self
         }
+    }
+
+    pub fn add_component(mut self, component: impl Into<Component>) -> Response {
+        if self.components.is_none() {
+            self.components = Some(Vec::new());
+        }
+
+        self.components.as_mut().unwrap().push(component.into());
+
+        self
     }
 
     pub fn add_embed(self, embed: EmbedBuilder) -> Response {
@@ -153,7 +156,6 @@ impl Response {
 
     pub fn to_json(self) -> Vec<u8> {
         let data = InteractionResponseData::from(self);
-
         serde_json::to_vec(&data).unwrap_or_default()
     }
 }

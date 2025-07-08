@@ -17,7 +17,7 @@ use zenis_discord::{
         },
         user::User,
     },
-    Interaction, InteractionData,
+    Interaction, InteractionData, ModalBuilder,
 };
 
 use crate::{watcher::Watcher, CommandContextHelper, OptionHandler, Response, ZenisClient};
@@ -112,6 +112,22 @@ impl CommandContext {
             .await?;
 
         Ok(response.model().await?)
+    }
+
+    pub async fn show_modal(&mut self, modal: ModalBuilder) -> anyhow::Result<()> {
+        self.already_replied = true;
+
+        self.interaction_client()
+            .create_response(
+                self.interaction.id,
+                &self.interaction.token,
+                &InteractionResponse {
+                    kind: InteractionResponseType::Modal,
+                    data: Some(modal.build()),
+                },
+            )
+            .await?;
+        Ok(())
     }
 
     pub async fn reply(&mut self, response: impl Into<Response>) -> anyhow::Result<()> {
@@ -261,7 +277,7 @@ impl CommandContext {
         self.client
             .http
             .update_message(message.channel_id, message.id)
-            .attachments(attachments)?
+            .attachments(attachments)
             .payload_json(&response.clone().to_json())
             .await?;
 

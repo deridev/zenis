@@ -4,10 +4,13 @@ use tokio_stream::StreamExt;
 use zenis_common::Pagination;
 use zenis_discord::{
     twilight_model::{
-        channel::message::{Component, ReactionType},
+        channel::message::{
+            component::{TextInput, TextInputStyle},
+            Component,
+        },
         id::{marker::UserMarker, Id},
     },
-    ActionRowBuilder, ButtonBuilder, EmbedBuilder, InteractionData,
+    ActionRowBuilder, ButtonBuilder, EmbedBuilder, Emoji, InteractionData, ModalBuilder,
 };
 
 use crate::{watcher::WatcherOptions, CommandContext, Response};
@@ -68,17 +71,29 @@ impl EmbedPagination {
             return vec![];
         }
 
+        let previous = ButtonBuilder::new()
+            .set_custom_id("previous")
+            .set_emoji(Emoji::from_unicode("◀️"));
+
+        let next = ButtonBuilder::new()
+            .set_custom_id("next")
+            .set_emoji(Emoji::from_unicode("▶️"));
+
+        let specific = ButtonBuilder::new()
+            .set_custom_id("specific")
+            .set_emoji(Emoji::from_unicode("🔍"));
+
+        if self.pagination.pages.len() > 8 {
+            return vec![ActionRowBuilder::new()
+                .add_button(previous)
+                .add_button(next)
+                .add_button(specific)
+                .build()];
+        }
+
         vec![ActionRowBuilder::new()
-            .add_button(ButtonBuilder::new().set_custom_id("previous").set_emoji(
-                ReactionType::Unicode {
-                    name: "◀️".into()
-                },
-            ))
-            .add_button(ButtonBuilder::new().set_custom_id("next").set_emoji(
-                ReactionType::Unicode {
-                    name: "▶️".into()
-                },
-            ))
+            .add_button(previous)
+            .add_button(next)
             .build()]
     }
 
@@ -114,21 +129,63 @@ impl EmbedPagination {
         tokio::pin!(stream);
 
         while let Some(Ok(collected)) = stream.next().await {
-            let Some(InteractionData::MessageComponent(data)) = &collected.data else {
+            let Some(InteractionData::MessageComponent(data)) = collected.data.clone() else {
                 break;
             };
+
+            let mut ctx = CommandContext::from_with_interaction(&self.ctx, Box::new(collected));
 
             if data.custom_id == "next" {
                 self.pagination.goto_next_page();
             } else if data.custom_id == "previous" {
                 self.pagination.goto_previous_page();
+            } else if data.custom_id == "specific" {
+                let modal = ModalBuilder::new("Escolha a Página", "pagination_choose_page")
+                    .add_text_input(TextInput {
+                        custom_id: "page".to_string(),
+                        label: "Página".to_string(),
+                        style: TextInputStyle::Short,
+                        required: Some(true),
+                        max_length: None,
+                        min_length: None,
+                        placeholder: None,
+                        value: None,
+                    });
+
+                let modal_response = ctx
+                    .helper()
+                    .show_and_await_modal(
+                        modal,
+                        WatcherOptions {
+                            timeout: Duration::from_secs(60),
+                        },
+                    )
+                    .await?;
+
+                let page = match modal_response {
+                    Some(modal_response) => {
+                        let page = modal_response.get_text_input("page").unwrap_or_default();
+                        ctx = CommandContext::from_with_interaction(
+                            &self.ctx,
+                            modal_response.interaction(),
+                        );
+
+                        page.parse::<usize>().unwrap_or(self.pagination.page + 1)
+                    }
+                    None => self.pagination.page + 1,
+                };
+
+                self.pagination.page = page.clamp(0, self.pagination.pages.len()).saturating_sub(1);
+
+                ctx.update_message(self.generate_response()).await?;
+                self.ctx = ctx;
+                continue;
             }
 
             if !self.pagination.active {
                 break;
             }
 
-            let mut ctx = CommandContext::from_with_interaction(&self.ctx, Box::new(collected));
             ctx.update_message(self.generate_response()).await?;
         }
 

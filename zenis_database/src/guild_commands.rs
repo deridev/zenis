@@ -27,7 +27,7 @@ impl GuildCommands {
         CACHE_ID.remove(&guild_data.id);
         CACHE_GUILD_ID.remove(&guild_data.guild_id);
         self.collection
-            .replace_one(query_by_id(guild_data.id), &guild_data, None)
+            .replace_one(query_by_id(guild_data.id), &guild_data)
             .await?;
         Ok(())
     }
@@ -47,7 +47,7 @@ impl GuildCommands {
         match cached {
             Some(model) => Ok(Some(model)),
             None => {
-                let Some(model) = self.collection.find_one(query, None).await? else {
+                let Some(model) = self.collection.find_one(query).await? else {
                     return Ok(None);
                 };
 
@@ -80,7 +80,7 @@ impl GuildCommands {
 
         Ok(self
             .collection
-            .find(query, None)
+            .find(query)
             .await?
             .collect::<Result<Vec<_>, _>>()
             .await?)
@@ -88,7 +88,7 @@ impl GuildCommands {
 
     pub async fn create_guild_data(&self, guild_id: Id<GuildMarker>) -> anyhow::Result<GuildModel> {
         let guild_data = GuildModel::new(guild_id);
-        self.collection.insert_one(guild_data.clone(), None).await?;
+        self.collection.insert_one(guild_data.clone()).await?;
 
         Ok(guild_data)
     }
