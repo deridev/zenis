@@ -421,6 +421,10 @@ async fn ask_for_payment_method(
 }
 
 pub async fn ask_for_brain(ctx: &mut CommandContext) -> anyhow::Result<InstanceBrain> {
+    if !config::ASK_FOR_BRAIN {
+        return Ok(InstanceBrain::GeminiFlash);
+    }
+
     let author = ctx.author().await?;
 
     let buttons = vec![

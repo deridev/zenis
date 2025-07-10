@@ -6,6 +6,7 @@ use std::{collections::HashMap, net::SocketAddr, str::FromStr, sync::Arc, time::
 use chrono::Utc;
 pub use event_handler::EventHandler;
 
+use rand::{rngs::StdRng, seq::IteratorRandom, SeedableRng};
 use warp::{reply::Response, Filter};
 use zenis_ai::{
     common::{ChatMessage, Role},
@@ -158,7 +159,7 @@ async fn main() {
         let client = client.clone();
         let db = database.clone();
         tokio::spawn(async move {
-            let mut channel_indexer = 0;
+            let mut rng = StdRng::from_os_rng();
             loop {
                 tokio::time::sleep(Duration::from_secs(3)).await;
 
@@ -177,8 +178,13 @@ async fn main() {
                         continue;
                     }
 
-                    let index = channel_indexer % instances.len();
-                    let instance = &mut instances[index];
+                    let Some(instance) = instances.iter_mut()
+                        .filter(|instance| !instance.is_awaiting_new_messages)
+                        .choose(&mut rng)
+                    else {
+                        continue;
+                    };
+
                     let result = process_instance(
                         http.clone(),
                         client.clone(),
@@ -209,7 +215,6 @@ async fn main() {
 
                 client.delete_off_instances(db.clone()).await.ok();
                 db.transactions().delete_expired_transactions().await.ok();
-                channel_indexer += 1;
             }
         });
     }
